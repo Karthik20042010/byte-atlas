@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip,
@@ -7,166 +8,18 @@ import {
 import {
   Search, Send, Bot, User, HardDrive, Cloud, Database, Archive,
   FileText, AlertTriangle, TrendingUp, Copy, Layers, ShieldAlert,
-  ChevronRight, Filter, X, Sparkles, ArrowUpRight, BarChart3,
+  ChevronRight, ChevronDown, Filter, X, Sparkles, ArrowUpRight, BarChart3,
   Users, RefreshCw, Shield, GitBranch, FolderOpen, CheckCircle2,
-  XCircle, Clock, Share2, Eye, Edit3
+  XCircle, Clock, Share2, Eye, Edit3, Folder, File, Download
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-// ═══════════════════════════════════════════════════════════════════
-// Mock Data — aligned to OneDrive DB schema
-// ═══════════════════════════════════════════════════════════════════
-
-const mockUsers = [
-  { user_id: "u-001", aad_user_id: "aad-f1a2", name: "Priya Sharma", email: "priya.sharma@acme.com", user_principal_name: "priya.sharma@acme.com" },
-  { user_id: "u-002", aad_user_id: "aad-b3c4", name: "Rahul Mehta", email: "rahul.mehta@acme.com", user_principal_name: "rahul.mehta@acme.com" },
-  { user_id: "u-003", aad_user_id: "aad-d5e6", name: "Anita Desai", email: "anita.desai@acme.com", user_principal_name: "anita.desai@acme.com" },
-  { user_id: "u-004", aad_user_id: "aad-g7h8", name: "Vikram Singh", email: "vikram.singh@acme.com", user_principal_name: "vikram.singh@acme.com" },
-  { user_id: "u-005", aad_user_id: "aad-i9j0", name: "Neha Gupta", email: "neha.gupta@acme.com", user_principal_name: "neha.gupta@acme.com" },
-];
-
-const mockDrives = [
-  { drive_id: "drv-001", drive_type: "personal", site_id: null, owner_user_id: "u-001", name: "Priya's OneDrive" },
-  { drive_id: "drv-002", drive_type: "personal", site_id: null, owner_user_id: "u-002", name: "Rahul's OneDrive" },
-  { drive_id: "drv-003", drive_type: "documentLibrary", site_id: "site-fin-001", owner_user_id: "u-003", name: "Finance Team Site" },
-  { drive_id: "drv-004", drive_type: "documentLibrary", site_id: "site-hr-001", owner_user_id: "u-004", name: "HR Shared Library" },
-  { drive_id: "drv-005", drive_type: "documentLibrary", site_id: "site-legal-001", owner_user_id: "u-005", name: "Legal & Compliance" },
-];
-
-const mockItems = [
-  { item_id: "it-001", drive_id: "drv-001", parent_id: null, name: "invoice_2024_Q1.pdf", path_display: "/Documents/Finance/invoice_2024_Q1.pdf", item_type: "file", mime_type: "application/pdf", size: 2097152, created_by: "u-001", created_at: "2024-01-15", last_modified_at: "2024-03-10" },
-  { item_id: "it-002", drive_id: "drv-003", parent_id: null, name: "invoice_2024_Q1.pdf", path_display: "/Shared/Invoices/invoice_2024_Q1.pdf", item_type: "file", mime_type: "application/pdf", size: 2097152, created_by: "u-003", created_at: "2024-01-16", last_modified_at: "2024-03-10" },
-  { item_id: "it-003", drive_id: "drv-002", parent_id: null, name: "balance_sheet_2024.xlsx", path_display: "/Documents/Reports/balance_sheet_2024.xlsx", item_type: "file", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 5242880, created_by: "u-002", created_at: "2024-02-01", last_modified_at: "2024-04-01" },
-  { item_id: "it-004", drive_id: "drv-003", parent_id: null, name: "audit_report_FY24.docx", path_display: "/Shared/Audit/audit_report_FY24.docx", item_type: "file", mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 8388608, created_by: "u-003", created_at: "2024-03-01", last_modified_at: "2024-03-28" },
-  { item_id: "it-005", drive_id: "drv-004", parent_id: null, name: "employee_handbook_v3.pdf", path_display: "/HR/Policies/employee_handbook_v3.pdf", item_type: "file", mime_type: "application/pdf", size: 15728640, created_by: "u-004", created_at: "2023-06-15", last_modified_at: "2024-02-20" },
-  { item_id: "it-006", drive_id: "drv-001", parent_id: null, name: "gstr_march_2024.xlsx", path_display: "/Documents/Tax/gstr_march_2024.xlsx", item_type: "file", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 1258291, created_by: "u-001", created_at: "2024-03-31", last_modified_at: "2024-04-02" },
-  { item_id: "it-007", drive_id: "drv-005", parent_id: null, name: "sanctions_list_2024.pdf", path_display: "/Legal/Compliance/sanctions_list_2024.pdf", item_type: "file", mime_type: "application/pdf", size: 524288, created_by: "u-005", created_at: "2024-01-05", last_modified_at: "2024-01-05" },
-  { item_id: "it-008", drive_id: "drv-002", parent_id: null, name: "training_data_backup.tar", path_display: "/Documents/ML/training_data_backup.tar", item_type: "file", mime_type: "application/x-tar", size: 4831838208, created_by: "u-002", created_at: "2024-02-15", last_modified_at: "2024-02-15" },
-  { item_id: "it-009", drive_id: "drv-003", parent_id: null, name: "board_minutes_Q4.docx", path_display: "/Shared/Board/board_minutes_Q4.docx", item_type: "file", mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 1572864, created_by: "u-003", created_at: "2024-01-10", last_modified_at: "2024-01-15" },
-  { item_id: "it-010", drive_id: "drv-001", parent_id: null, name: "credit_report_acme.pdf", path_display: "/Documents/Credit/credit_report_acme.pdf", item_type: "file", mime_type: "application/pdf", size: 3145728, created_by: "u-001", created_at: "2024-02-20", last_modified_at: "2024-02-20" },
-  { item_id: "it-011", drive_id: "drv-004", parent_id: null, name: "balance_sheet_2024.xlsx", path_display: "/HR/Finance/balance_sheet_2024.xlsx", item_type: "file", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 5242880, created_by: "u-004", created_at: "2024-02-05", last_modified_at: "2024-04-01" },
-  { item_id: "it-012", drive_id: "drv-005", parent_id: null, name: "contract_vendor_2024.pdf", path_display: "/Legal/Contracts/contract_vendor_2024.pdf", item_type: "file", mime_type: "application/pdf", size: 4194304, created_by: "u-005", created_at: "2024-03-15", last_modified_at: "2024-03-20" },
-  { item_id: "it-013", drive_id: "drv-003", parent_id: null, name: "bank_statement_jan24.pdf", path_display: "/Shared/Banking/bank_statement_jan24.pdf", item_type: "file", mime_type: "application/pdf", size: 838860, created_by: "u-003", created_at: "2024-02-01", last_modified_at: "2024-02-01" },
-  { item_id: "it-014", drive_id: "drv-001", parent_id: null, name: "presentation_Q1.pptx", path_display: "/Documents/Presentations/presentation_Q1.pptx", item_type: "file", mime_type: "application/vnd.openxmlformats-officedocument.presentationml.presentation", size: 12582912, created_by: "u-001", created_at: "2024-03-20", last_modified_at: "2024-03-25" },
-  { item_id: "it-015", drive_id: "drv-002", parent_id: null, name: "dataset_analysis.zip", path_display: "/Documents/Data/dataset_analysis.zip", item_type: "file", mime_type: "application/zip", size: 5368709120, created_by: "u-002", created_at: "2024-01-20", last_modified_at: "2024-01-20" },
-];
-
-const mockFileProperties = [
-  { item_id: "it-001", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-abc123def" },
-  { item_id: "it-002", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-abc123def" },
-  { item_id: "it-003", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: ".xlsx", checksum: "sha256-xyz789ghi" },
-  { item_id: "it-004", mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: ".docx", checksum: "sha256-aud456jkl" },
-  { item_id: "it-005", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-hr789mno" },
-  { item_id: "it-006", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: ".xlsx", checksum: "sha256-gst012pqr" },
-  { item_id: "it-007", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-san345stu" },
-  { item_id: "it-008", mime_type: "application/x-tar", extension: ".tar", checksum: "sha256-tar678vwx" },
-  { item_id: "it-009", mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: ".docx", checksum: "sha256-min901yza" },
-  { item_id: "it-010", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-crd234bcd" },
-  { item_id: "it-011", mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: ".xlsx", checksum: "sha256-xyz789ghi" },
-  { item_id: "it-012", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-con567efg" },
-  { item_id: "it-013", mime_type: "application/pdf", extension: ".pdf", checksum: "sha256-bnk890hij" },
-  { item_id: "it-014", mime_type: "application/vnd.openxmlformats-officedocument.presentationml.presentation", extension: ".pptx", checksum: "sha256-ppt123klm" },
-  { item_id: "it-015", mime_type: "application/zip", extension: ".zip", checksum: "sha256-dta456nop" },
-];
-
-const mockFileVersions = [
-  { version_id: "v-001", item_id: "it-001", version_number: 1, blob_id: "b-001", created_by: "u-001", is_current: false },
-  { version_id: "v-002", item_id: "it-001", version_number: 2, blob_id: "b-002", created_by: "u-001", is_current: true },
-  { version_id: "v-003", item_id: "it-003", version_number: 1, blob_id: "b-003", created_by: "u-002", is_current: false },
-  { version_id: "v-004", item_id: "it-003", version_number: 2, blob_id: "b-004", created_by: "u-002", is_current: false },
-  { version_id: "v-005", item_id: "it-003", version_number: 3, blob_id: "b-005", created_by: "u-002", is_current: true },
-  { version_id: "v-006", item_id: "it-004", version_number: 1, blob_id: "b-006", created_by: "u-003", is_current: false },
-  { version_id: "v-007", item_id: "it-004", version_number: 2, blob_id: "b-007", created_by: "u-003", is_current: true },
-  { version_id: "v-008", item_id: "it-005", version_number: 1, blob_id: "b-008", created_by: "u-004", is_current: false },
-  { version_id: "v-009", item_id: "it-005", version_number: 2, blob_id: "b-009", created_by: "u-004", is_current: false },
-  { version_id: "v-010", item_id: "it-005", version_number: 3, blob_id: "b-010", created_by: "u-004", is_current: true },
-  { version_id: "v-011", item_id: "it-014", version_number: 1, blob_id: "b-011", created_by: "u-001", is_current: false },
-  { version_id: "v-012", item_id: "it-014", version_number: 2, blob_id: "b-012", created_by: "u-001", is_current: false },
-  { version_id: "v-013", item_id: "it-014", version_number: 3, blob_id: "b-013", created_by: "u-001", is_current: false },
-  { version_id: "v-014", item_id: "it-014", version_number: 4, blob_id: "b-014", created_by: "u-001", is_current: true },
-];
-
-const mockPermissions = [
-  { permission_id: "p-001", item_id: "it-001", user_id: "u-001", role: "owner" },
-  { permission_id: "p-002", item_id: "it-001", user_id: "u-003", role: "read" },
-  { permission_id: "p-003", item_id: "it-002", user_id: "u-003", role: "owner" },
-  { permission_id: "p-004", item_id: "it-002", user_id: "u-001", role: "write" },
-  { permission_id: "p-005", item_id: "it-003", user_id: "u-002", role: "owner" },
-  { permission_id: "p-006", item_id: "it-003", user_id: "u-001", role: "read" },
-  { permission_id: "p-007", item_id: "it-004", user_id: "u-003", role: "owner" },
-  { permission_id: "p-008", item_id: "it-004", user_id: "u-002", role: "write" },
-  { permission_id: "p-009", item_id: "it-004", user_id: "u-005", role: "read" },
-  { permission_id: "p-010", item_id: "it-005", user_id: "u-004", role: "owner" },
-  { permission_id: "p-011", item_id: "it-005", user_id: "u-001", role: "read" },
-  { permission_id: "p-012", item_id: "it-005", user_id: "u-002", role: "read" },
-  { permission_id: "p-013", item_id: "it-005", user_id: "u-003", role: "read" },
-  { permission_id: "p-014", item_id: "it-009", user_id: "u-003", role: "owner" },
-  { permission_id: "p-015", item_id: "it-009", user_id: "u-001", role: "write" },
-  { permission_id: "p-016", item_id: "it-009", user_id: "u-002", role: "write" },
-  { permission_id: "p-017", item_id: "it-012", user_id: "u-005", role: "owner" },
-  { permission_id: "p-018", item_id: "it-012", user_id: "u-003", role: "read" },
-  { permission_id: "p-019", item_id: "it-014", user_id: "u-001", role: "owner" },
-  { permission_id: "p-020", item_id: "it-014", user_id: "u-002", role: "write" },
-  { permission_id: "p-021", item_id: "it-014", user_id: "u-003", role: "read" },
-  { permission_id: "p-022", item_id: "it-014", user_id: "u-004", role: "read" },
-];
-
-const mockSyncRuns = [
-  { id: 1, drive_id: "drv-001", run_started_at: "2024-04-06T08:00:00", run_completed_at: "2024-04-06T08:12:34", status: "succeeded" as const, stats_json: { items_synced: 342, items_added: 12, items_modified: 8 } },
-  { id: 2, drive_id: "drv-002", run_started_at: "2024-04-06T08:05:00", run_completed_at: "2024-04-06T08:18:45", status: "succeeded" as const, stats_json: { items_synced: 567, items_added: 23, items_modified: 5 } },
-  { id: 3, drive_id: "drv-003", run_started_at: "2024-04-06T08:10:00", run_completed_at: "2024-04-06T08:25:12", status: "succeeded" as const, stats_json: { items_synced: 1245, items_added: 45, items_modified: 32 } },
-  { id: 4, drive_id: "drv-004", run_started_at: "2024-04-06T08:15:00", run_completed_at: null, status: "running" as const, stats_json: { items_synced: 120, items_added: 3, items_modified: 1 } },
-  { id: 5, drive_id: "drv-005", run_started_at: "2024-04-06T07:00:00", run_completed_at: "2024-04-06T07:05:23", status: "failed" as const, stats_json: { items_synced: 0, items_added: 0, items_modified: 0 }, error_message: "Delta token expired, full sync required" },
-];
-
-const mockSubjects = [
-  { subject_id: 1, subject_type: "user" as const, aad_object_id: "aad-f1a2", display_name: "Priya Sharma" },
-  { subject_id: 2, subject_type: "user" as const, aad_object_id: "aad-b3c4", display_name: "Rahul Mehta" },
-  { subject_id: 3, subject_type: "group" as const, aad_object_id: "grp-fin-001", display_name: "Finance Team" },
-  { subject_id: 4, subject_type: "link" as const, link_id: "lnk-ext-001", display_name: "External Share Link" },
-  { subject_id: 5, subject_type: "application" as const, aad_object_id: "app-backup-001", display_name: "Backup Service" },
-];
-
-// ── Derived data ──
-const STORAGE_GROWTH = [
-  { month: "Oct", storage: 38 },
-  { month: "Nov", storage: 42 },
-  { month: "Dec", storage: 45 },
-  { month: "Jan", storage: 50 },
-  { month: "Feb", storage: 55 },
-  { month: "Mar", storage: 60 },
-  { month: "Apr", storage: 64 },
-];
-
-const CATEGORY_DATA = [
-  { name: "Invoices", size: 14.2 },
-  { name: "Bank Statements", size: 12.1 },
-  { name: "Financials", size: 10.8 },
-  { name: "GSTR", size: 8.5 },
-  { name: "Auditors Report", size: 7.2 },
-  { name: "Sanction Letters", size: 6.9 },
-  { name: "Presentations", size: 5.4 },
-  { name: "Credit Reports", size: 4.8 },
-  { name: "Others", size: 8.1 },
-];
-
-const ALERTS = [
-  { type: "warning", icon: Copy, text: "Duplicate files detected: invoice_2024_Q1.pdf exists on 2 drives (drv-001, drv-003) with matching checksum", time: "2h ago" },
-  { type: "danger", icon: XCircle, text: "Sync failed on Legal & Compliance drive — delta token expired", time: "5h ago" },
-  { type: "info", icon: FileText, text: "4 files with 3+ versions detected — consider version cleanup policy", time: "1d ago" },
-  { type: "warning", icon: Share2, text: "1 external sharing link active — review permissions", time: "1d ago" },
-];
-
-const SUGGESTED_PROMPTS = [
-  "Show drives overview",
-  "Find duplicate files",
-  "Files with most versions",
-  "Shared files analysis",
-  "Sync status",
-  "Permission breakdown",
-];
+import {
+  mockUsers, mockDrives, mockItems, mockFileProperties, mockFileVersions,
+  mockPermissions, mockSyncRuns, mockSubjects, STORAGE_GROWTH, CATEGORY_DATA,
+  formatSize, exportToCSV, DRIVE_COLORS, tooltipStyle
+} from "@/lib/mockData";
 
 // ── Agent Response Logic ──
 type ChatMsg = { role: "user" | "agent"; content: string; table?: { headers: string[]; rows: string[][] } };
@@ -195,8 +48,8 @@ function getAgentResponse(q: string): ChatMsg {
     return {
       role: "agent",
       content: `You have **${mockDrives.length} drives** configured:\n\n${mockDrives.map(d => {
-        const fileCount = mockItems.filter(i => i.drive_id === d.drive_id).length;
-        const totalSize = mockItems.filter(i => i.drive_id === d.drive_id).reduce((a, i) => a + i.size, 0);
+        const fileCount = mockItems.filter(i => i.drive_id === d.drive_id && i.item_type === "file").length;
+        const totalSize = mockItems.filter(i => i.drive_id === d.drive_id && i.item_type === "file").reduce((a, i) => a + i.size, 0);
         const sync = mockSyncRuns.find(s => s.drive_id === d.drive_id);
         return `• **${d.name}** (${d.drive_type}) — ${fileCount} files, ${formatSize(totalSize)}, sync: ${sync?.status || "unknown"}`;
       }).join("\n")}`,
@@ -242,7 +95,7 @@ function getAgentResponse(q: string): ChatMsg {
     };
   }
   if (lq.includes("largest") || lq.includes("large")) {
-    const sorted = [...mockItems].sort((a, b) => b.size - a.size).slice(0, 5);
+    const sorted = [...mockItems].filter(i => i.item_type === "file").sort((a, b) => b.size - a.size).slice(0, 5);
     return {
       role: "agent",
       content: "Here are the **largest files** across all drives:",
@@ -268,18 +121,11 @@ function getAgentResponse(q: string): ChatMsg {
   }
   return {
     role: "agent",
-    content: `I analyzed your OneDrive ecosystem: **${mockDrives.length} drives**, **${mockItems.length} items**, **${mockFileVersions.length} file versions**, **${mockPermissions.length} permissions**. Try asking about drives, duplicates, versions, permissions, or sync status.`,
+    content: `I analyzed your OneDrive ecosystem: **${mockDrives.length} drives**, **${mockItems.filter(i => i.item_type === "file").length} files**, **${mockFileVersions.length} file versions**, **${mockPermissions.length} permissions**. Try asking about drives, duplicates, versions, permissions, or sync status.`,
   };
 }
 
 // ── Helpers ──
-function formatSize(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + " GB";
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
-  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return bytes + " B";
-}
-
 function AnimatedCounter({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -297,7 +143,6 @@ function AnimatedCounter({ value, suffix = "", prefix = "" }: { value: number; s
   return <span>{prefix}{display.toLocaleString()}{suffix}</span>;
 }
 
-// ── Drive badge ──
 const driveTypeColors: Record<string, string> = {
   personal: "bg-blue-100 text-blue-700",
   documentLibrary: "bg-emerald-100 text-emerald-700",
@@ -312,7 +157,6 @@ function DriveBadge({ type }: { type: string }) {
   );
 }
 
-// ── Sync status icon ──
 function SyncStatusIcon({ status }: { status: string }) {
   if (status === "succeeded") return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
   if (status === "running") return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />;
@@ -320,13 +164,14 @@ function SyncStatusIcon({ status }: { status: string }) {
   return <Clock className="w-4 h-4 text-muted-foreground" />;
 }
 
-// ── KPI Card ──
-function KPICard({ icon: Icon, label, value, suffix, prefix, color, delay }: {
-  icon: typeof Cloud; label: string; value: number; suffix?: string; prefix?: string; color: string; delay: number;
+function KPICard({ icon: Icon, label, value, suffix, prefix, color, delay, href }: {
+  icon: typeof Cloud; label: string; value: number; suffix?: string; prefix?: string; color: string; delay: number; href?: string;
 }) {
+  const navigate = useNavigate();
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5 }}
-      className="glass-card p-5 stat-glow group hover:scale-[1.02] transition-transform duration-300">
+      className={`glass-card p-5 stat-glow group hover:scale-[1.02] transition-transform duration-300 ${href ? "cursor-pointer" : ""}`}
+      onClick={() => href && navigate(href)}>
       <div className="flex items-center justify-between mb-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
           <Icon className="w-5 h-5" />
@@ -341,21 +186,113 @@ function KPICard({ icon: Icon, label, value, suffix, prefix, color, delay }: {
   );
 }
 
-// ── Tooltip style ──
-const tooltipStyle = { background: "#fff", border: "1px solid hsl(220,13%,91%)", borderRadius: 8, fontSize: 11, color: "#333" };
+// ── File Explorer Tree ──
+type TreeNode = {
+  id: string;
+  name: string;
+  type: "folder" | "file";
+  children: TreeNode[];
+  item?: typeof mockItems[0];
+};
+
+function buildTree(driveId: string): TreeNode[] {
+  const driveItems = mockItems.filter(i => i.drive_id === driveId);
+  const rootItems = driveItems.filter(i => i.parent_id === null);
+
+  function buildChildren(parentId: string): TreeNode[] {
+    return driveItems
+      .filter(i => i.parent_id === parentId)
+      .map(item => ({
+        id: item.item_id,
+        name: item.name,
+        type: item.item_type as "folder" | "file",
+        children: item.item_type === "folder" ? buildChildren(item.item_id) : [],
+        item,
+      }))
+      .sort((a, b) => {
+        if (a.type === "folder" && b.type === "file") return -1;
+        if (a.type === "file" && b.type === "folder") return 1;
+        return a.name.localeCompare(b.name);
+      });
+  }
+
+  return rootItems.map(item => ({
+    id: item.item_id,
+    name: item.name,
+    type: item.item_type as "folder" | "file",
+    children: item.item_type === "folder" ? buildChildren(item.item_id) : [],
+    item,
+  })).sort((a, b) => {
+    if (a.type === "folder" && b.type === "file") return -1;
+    if (a.type === "file" && b.type === "folder") return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function TreeItem({ node, depth = 0, selectedId, onSelect }: { node: TreeNode; depth?: number; selectedId: string | null; onSelect: (node: TreeNode) => void }) {
+  const [expanded, setExpanded] = useState(depth < 1);
+  const isFolder = node.type === "folder";
+  const hasChildren = node.children.length > 0;
+
+  return (
+    <div>
+      <div
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer text-xs transition-colors ${selectedId === node.id ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]" : "hover:bg-secondary"}`}
+        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        onClick={() => { if (isFolder && hasChildren) setExpanded(!expanded); onSelect(node); }}
+      >
+        {isFolder && hasChildren ? (
+          <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`} />
+        ) : (
+          <span className="w-3" />
+        )}
+        {isFolder ? <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <File className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+        <span className="truncate">{node.name}</span>
+      </div>
+      {isFolder && expanded && (
+        <AnimatePresence>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+            {node.children.map(child => (
+              <TreeItem key={child.id} node={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+const ALERTS = [
+  { type: "warning", icon: Copy, text: "Duplicate files detected: invoice_2024_Q1.pdf exists on 2 drives (drv-001, drv-003) with matching checksum", time: "2h ago" },
+  { type: "danger", icon: XCircle, text: "Sync failed on Legal & Compliance drive — delta token expired", time: "5h ago" },
+  { type: "info", icon: FileText, text: "4 files with 3+ versions detected — consider version cleanup policy", time: "1d ago" },
+  { type: "warning", icon: Share2, text: "1 external sharing link active — review permissions", time: "1d ago" },
+];
+
+const SUGGESTED_PROMPTS = [
+  "Show drives overview",
+  "Find duplicate files",
+  "Files with most versions",
+  "Shared files analysis",
+  "Sync status",
+  "Permission breakdown",
+];
 
 // ═══════════════════════════════════════════════════════════════════
 // Main Component
 // ═══════════════════════════════════════════════════════════════════
 const Index = () => {
+  const navigate = useNavigate();
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
     { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. Ask me about drives, file versions, permissions, sync status, or duplicates across your OneDrive ecosystem." },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [driveFilter, setDriveFilter] = useState("All");
-  const [activeTab, setActiveTab] = useState<"overview" | "drives" | "versions" | "permissions" | "sync">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "drives" | "versions" | "permissions" | "sync" | "explorer">("overview");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [explorerDrive, setExplorerDrive] = useState(mockDrives[0].drive_id);
+  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -367,8 +304,7 @@ const Index = () => {
     setTimeout(() => { setChatMessages(prev => [...prev, getAgentResponse(chatInput)]); }, 600);
   };
 
-  // Derived computations
-  const totalSize = mockItems.reduce((a, i) => a + i.size, 0);
+  const totalSize = mockItems.filter(i => i.item_type === "file").reduce((a, i) => a + i.size, 0);
   const totalFiles = mockItems.filter(i => i.item_type === "file").length;
 
   const checksumMap: Record<string, string[]> = {};
@@ -383,23 +319,21 @@ const Index = () => {
   const sharedItems = new Set(mockPermissions.filter(p => p.role !== "owner").map(p => p.item_id));
 
   const driveStorageData = mockDrives.map(d => {
-    const size = mockItems.filter(i => i.drive_id === d.drive_id).reduce((a, i) => a + i.size, 0);
+    const size = mockItems.filter(i => i.drive_id === d.drive_id && i.item_type === "file").reduce((a, i) => a + i.size, 0);
     return { name: d.name.replace("'s OneDrive", "").replace(" Site", ""), value: Math.round(size / 1048576), fullName: d.name };
   });
-  const DRIVE_COLORS = ["hsl(217,91%,50%)", "hsl(262,83%,58%)", "hsl(142,71%,40%)", "hsl(38,92%,50%)", "hsl(0,72%,51%)"];
 
   const filteredFiles = mockItems.filter(f => {
+    if (f.item_type !== "file") return false;
     const matchSearch = !searchQuery || f.name.toLowerCase().includes(searchQuery.toLowerCase()) || f.path_display.toLowerCase().includes(searchQuery.toLowerCase());
     const matchDrive = driveFilter === "All" || f.drive_id === driveFilter;
     return matchSearch && matchDrive;
   });
 
-  // Version data
   const versionCounts: Record<string, number> = {};
   mockFileVersions.forEach(v => { versionCounts[v.item_id] = (versionCounts[v.item_id] || 0) + 1; });
   const multiVersionFiles = Object.entries(versionCounts).filter(([, c]) => c > 1).sort((a, b) => b[1] - a[1]);
 
-  // Permission breakdown
   const roleCount = { owner: 0, write: 0, read: 0 };
   mockPermissions.forEach(p => { if (p.role in roleCount) roleCount[p.role as keyof typeof roleCount]++; });
   const permissionPieData = [
@@ -408,10 +342,9 @@ const Index = () => {
     { name: "Read", value: roleCount.read, color: "hsl(142,71%,40%)" },
   ];
 
-  // User activity
   const userActivity = mockUsers.map(u => {
-    const fileCount = mockItems.filter(i => i.created_by === u.user_id).length;
-    const storageUsed = mockItems.filter(i => i.created_by === u.user_id).reduce((a, i) => a + i.size, 0);
+    const fileCount = mockItems.filter(i => i.created_by === u.user_id && i.item_type === "file").length;
+    const storageUsed = mockItems.filter(i => i.created_by === u.user_id && i.item_type === "file").reduce((a, i) => a + i.size, 0);
     return { ...u, fileCount, storageUsed };
   }).sort((a, b) => b.storageUsed - a.storageUsed);
 
@@ -421,12 +354,27 @@ const Index = () => {
     info: "border-l-[hsl(var(--primary))] bg-blue-50",
   };
 
+  // File explorer tree
+  const explorerTree = useMemo(() => buildTree(explorerDrive), [explorerDrive]);
+
+  const handleExportFiles = () => {
+    const headers = ["File Name", "Drive", "Type", "Size", "Created By", "Path"];
+    const rows = filteredFiles.map(f => [
+      f.name,
+      mockDrives.find(d => d.drive_id === f.drive_id)?.name || "",
+      mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || "",
+      formatSize(f.size),
+      mockUsers.find(u => u.user_id === f.created_by)?.name || "",
+      f.path_display,
+    ]);
+    exportToCSV(headers, rows, "file_search_export.csv");
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* ── LEFT: Chat Panel ── */}
       <motion.div initial={{ x: -320 }} animate={{ x: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-[340px] min-w-[340px] flex flex-col border-r border-border bg-card">
-        {/* Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
@@ -447,7 +395,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Messages */}
         <ScrollArea className="flex-1 p-4 scrollbar-thin">
           <div className="space-y-3">
             <AnimatePresence>
@@ -496,7 +443,6 @@ const Index = () => {
           </div>
         </ScrollArea>
 
-        {/* Input */}
         <div className="p-3 border-t border-border">
           <div className="flex gap-2">
             <Input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()}
@@ -513,7 +459,6 @@ const Index = () => {
       {/* ── RIGHT: Dashboard ── */}
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-background">
         <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-          {/* Header */}
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
@@ -532,7 +477,8 @@ const Index = () => {
           <div className="flex gap-1 p-1 bg-secondary rounded-lg w-fit">
             {([
               { key: "overview", label: "Overview", icon: BarChart3 },
-              { key: "drives", label: "Drives", icon: FolderOpen },
+              { key: "explorer", label: "File Explorer", icon: FolderOpen },
+              { key: "drives", label: "Drives", icon: Cloud },
               { key: "versions", label: "Versions", icon: GitBranch },
               { key: "permissions", label: "Permissions", icon: Shield },
               { key: "sync", label: "Sync Status", icon: RefreshCw },
@@ -547,19 +493,17 @@ const Index = () => {
           {/* ═══ OVERVIEW TAB ═══ */}
           {activeTab === "overview" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              {/* KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <KPICard icon={FileText} label="Total Files" value={totalFiles} color="bg-blue-100 text-blue-600" delay={0.1} />
-                <KPICard icon={Database} label="Total Storage" value={Math.round(totalSize / 1048576)} suffix=" MB" color="bg-emerald-100 text-emerald-600" delay={0.15} />
-                <KPICard icon={FolderOpen} label="Total Drives" value={mockDrives.length} color="bg-violet-100 text-violet-600" delay={0.2} />
-                <KPICard icon={Copy} label="Duplicates" value={duplicateFileCount} color="bg-amber-100 text-amber-600" delay={0.25} />
-                <KPICard icon={GitBranch} label="File Versions" value={mockFileVersions.length} color="bg-sky-100 text-sky-600" delay={0.3} />
-                <KPICard icon={Share2} label="Shared Files" value={sharedItems.size} color="bg-pink-100 text-pink-600" delay={0.35} />
+                <KPICard icon={FileText} label="Total Files" value={totalFiles} color="bg-blue-100 text-blue-600" delay={0.1} href="/storage" />
+                <KPICard icon={Database} label="Total Storage" value={Math.round(totalSize / 1048576)} suffix=" MB" color="bg-emerald-100 text-emerald-600" delay={0.15} href="/storage" />
+                <KPICard icon={Cloud} label="Total Drives" value={mockDrives.length} color="bg-violet-100 text-violet-600" delay={0.2} href="/drives" />
+                <KPICard icon={Copy} label="Duplicates" value={duplicateFileCount} color="bg-amber-100 text-amber-600" delay={0.25} href="/duplicates" />
+                <KPICard icon={GitBranch} label="File Versions" value={mockFileVersions.length} color="bg-sky-100 text-sky-600" delay={0.3} href="/versions" />
+                <KPICard icon={Share2} label="Shared Files" value={sharedItems.size} color="bg-pink-100 text-pink-600" delay={0.35} href="/shared" />
               </div>
 
               {/* Charts Row */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Pie Chart — Storage by Drive */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-5">
                   <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-[hsl(var(--primary))]" /> Storage by Drive
@@ -575,7 +519,6 @@ const Index = () => {
                   </ResponsiveContainer>
                 </motion.div>
 
-                {/* Category Bar Chart */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="glass-card p-5 lg:col-span-2">
                   <h3 className="text-sm font-semibold mb-4">File Category Distribution (TB)</h3>
                   <ResponsiveContainer width="100%" height={200}>
@@ -613,7 +556,6 @@ const Index = () => {
                   </ResponsiveContainer>
                 </motion.div>
 
-                {/* Duplicate Analysis */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="glass-card p-5">
                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Copy className="w-4 h-4 text-amber-500" /> Duplicate Analysis (by Checksum)
@@ -668,11 +610,16 @@ const Index = () => {
                 </div>
               </motion.div>
 
-              {/* File Search */}
+              {/* File Search with Export */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="glass-card p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <Search className="w-4 h-4 text-[hsl(var(--primary))]" /> Global File Search
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Search className="w-4 h-4 text-[hsl(var(--primary))]" /> Global File Search
+                  </h3>
+                  <button onClick={handleExportFiles} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground hover:bg-secondary/80 transition">
+                    <Download className="w-3 h-3" /> Export CSV
+                  </button>
+                </div>
                 <div className="flex gap-3 mb-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -733,13 +680,130 @@ const Index = () => {
             </motion.div>
           )}
 
+          {/* ═══ FILE EXPLORER TAB ═══ */}
+          {activeTab === "explorer" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xs text-muted-foreground">Drive:</span>
+                {mockDrives.map(d => (
+                  <button key={d.drive_id} onClick={() => { setExplorerDrive(d.drive_id); setSelectedNode(null); }}
+                    className={`text-[10px] px-3 py-1.5 rounded-full transition-colors ${explorerDrive === d.drive_id ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-secondary-foreground hover:bg-[hsl(var(--primary))]/10"}`}>
+                    {d.name.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ minHeight: 500 }}>
+                {/* Tree */}
+                <div className="glass-card p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4 text-amber-500" /> Folder Tree
+                  </h3>
+                  <ScrollArea className="h-[450px]">
+                    <div className="space-y-0.5">
+                      {explorerTree.map(node => (
+                        <TreeItem key={node.id} node={node} selectedId={selectedNode?.id || null} onSelect={setSelectedNode} />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                {/* Detail Panel */}
+                <div className="lg:col-span-2 glass-card p-5">
+                  {selectedNode ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <div className="flex items-center gap-3 mb-4">
+                        {selectedNode.type === "folder" ? <Folder className="w-6 h-6 text-amber-500" /> : <File className="w-6 h-6 text-blue-500" />}
+                        <div>
+                          <h3 className="font-semibold">{selectedNode.name}</h3>
+                          <p className="text-[10px] text-muted-foreground">{selectedNode.item?.path_display}</p>
+                        </div>
+                      </div>
+
+                      {selectedNode.type === "file" && selectedNode.item && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="p-3 bg-secondary rounded-lg"><p className="text-[10px] text-muted-foreground">Size</p><p className="font-semibold text-sm">{formatSize(selectedNode.item.size)}</p></div>
+                            <div className="p-3 bg-secondary rounded-lg"><p className="text-[10px] text-muted-foreground">Type</p><p className="font-semibold text-sm">{mockFileProperties.find(fp => fp.item_id === selectedNode.item?.item_id)?.extension || "—"}</p></div>
+                            <div className="p-3 bg-secondary rounded-lg"><p className="text-[10px] text-muted-foreground">Created</p><p className="font-semibold text-sm">{selectedNode.item.created_at}</p></div>
+                            <div className="p-3 bg-secondary rounded-lg"><p className="text-[10px] text-muted-foreground">Modified</p><p className="font-semibold text-sm">{selectedNode.item.last_modified_at}</p></div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-secondary rounded-lg"><p className="text-[10px] text-muted-foreground">Created By</p><p className="font-semibold text-sm">{mockUsers.find(u => u.user_id === selectedNode.item?.created_by)?.name || "—"}</p></div>
+                            <div className="p-3 bg-secondary rounded-lg"><p className="text-[10px] text-muted-foreground">Checksum</p><p className="font-mono text-[10px]">{mockFileProperties.find(fp => fp.item_id === selectedNode.item?.item_id)?.checksum || "—"}</p></div>
+                          </div>
+                          {/* Versions */}
+                          {(() => {
+                            const versions = mockFileVersions.filter(v => v.item_id === selectedNode.item?.item_id);
+                            if (versions.length === 0) return null;
+                            return (
+                              <div>
+                                <h4 className="text-xs font-semibold mb-2">Versions ({versions.length})</h4>
+                                <div className="flex gap-2 flex-wrap">
+                                  {versions.sort((a, b) => a.version_number - b.version_number).map(v => (
+                                    <div key={v.version_id} className={`px-3 py-1.5 rounded-lg text-xs ${v.is_current ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                                      v{v.version_number} {v.is_current && <CheckCircle2 className="w-3 h-3 inline ml-1" />}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          {/* Permissions */}
+                          {(() => {
+                            const perms = mockPermissions.filter(p => p.item_id === selectedNode.item?.item_id);
+                            if (perms.length === 0) return null;
+                            return (
+                              <div>
+                                <h4 className="text-xs font-semibold mb-2">Permissions ({perms.length})</h4>
+                                <div className="flex gap-1 flex-wrap">
+                                  {perms.map(p => (
+                                    <span key={p.permission_id} className={`text-[10px] px-2 py-1 rounded ${p.role === "owner" ? "bg-blue-100 text-blue-700" : p.role === "write" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                      {mockUsers.find(u => u.user_id === p.user_id)?.name.split(" ")[0]} ({p.role})
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {selectedNode.type === "folder" && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-3">{selectedNode.children.length} items in this folder</p>
+                          <div className="space-y-1">
+                            {selectedNode.children.map(child => (
+                              <div key={child.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer text-xs" onClick={() => setSelectedNode(child)}>
+                                {child.type === "folder" ? <Folder className="w-3.5 h-3.5 text-amber-500" /> : <File className="w-3.5 h-3.5 text-blue-500" />}
+                                <span className="flex-1">{child.name}</span>
+                                {child.type === "file" && child.item && <span className="text-muted-foreground">{formatSize(child.item.size)}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">Select a file or folder to view details</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* ═══ DRIVES TAB ═══ */}
           {activeTab === "drives" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {mockDrives.map((drive, idx) => {
-                  const fileCount = mockItems.filter(i => i.drive_id === drive.drive_id).length;
-                  const driveSize = mockItems.filter(i => i.drive_id === drive.drive_id).reduce((a, i) => a + i.size, 0);
+                  const fileCount = mockItems.filter(i => i.drive_id === drive.drive_id && i.item_type === "file").length;
+                  const driveSize = mockItems.filter(i => i.drive_id === drive.drive_id && i.item_type === "file").reduce((a, i) => a + i.size, 0);
                   const syncRun = mockSyncRuns.find(s => s.drive_id === drive.drive_id);
                   const owner = mockUsers.find(u => u.user_id === drive.owner_user_id);
                   return (
@@ -770,14 +834,8 @@ const Index = () => {
                       <div className="mt-3 pt-3 border-t border-border">
                         <p className="text-[10px] text-muted-foreground">
                           Owner: <span className="text-foreground">{owner?.name || "—"}</span>
+                          {syncRun && <> · Last sync: {new Date(syncRun.run_started_at).toLocaleTimeString()}</>}
                         </p>
-                        {syncRun && (
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            Last sync: <span className="text-foreground">{new Date(syncRun.run_started_at).toLocaleString()}</span>
-                            {syncRun.stats_json && <span className="text-muted-foreground"> · {syncRun.stats_json.items_synced} items</span>}
-                          </p>
-                        )}
-                        {drive.site_id && <p className="text-[10px] text-muted-foreground mt-1 font-mono">Site: {drive.site_id}</p>}
                       </div>
                     </motion.div>
                   );
@@ -789,11 +847,24 @@ const Index = () => {
           {/* ═══ VERSIONS TAB ═══ */}
           {activeTab === "versions" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold text-[hsl(var(--primary))]">{mockFileVersions.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Versions</p>
+                </div>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold text-violet-500">{multiVersionFiles.length}</p>
+                  <p className="text-xs text-muted-foreground">Multi-Version Files</p>
+                </div>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold text-amber-500">{multiVersionFiles[0]?.[1] || 0}</p>
+                  <p className="text-xs text-muted-foreground">Max Versions</p>
+                </div>
+              </div>
+
               <div className="glass-card p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-[hsl(var(--primary))]" /> Files with Multiple Versions
-                </h3>
-                <div className="space-y-3">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><GitBranch className="w-4 h-4 text-violet-500" /> File Version History</h3>
+                <div className="space-y-4">
                   {multiVersionFiles.map(([itemId, count]) => {
                     const item = mockItems.find(i => i.item_id === itemId)!;
                     const drive = mockDrives.find(d => d.drive_id === item.drive_id);
@@ -830,7 +901,6 @@ const Index = () => {
           {activeTab === "permissions" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Permission Role Breakdown */}
                 <div className="glass-card p-5">
                   <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                     <Shield className="w-4 h-4 text-[hsl(var(--primary))]" /> Permission Roles
@@ -845,22 +915,12 @@ const Index = () => {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="grid grid-cols-3 gap-2 mt-3">
-                    <div className="text-center p-2 bg-blue-50 rounded-lg">
-                      <p className="font-bold text-blue-600">{roleCount.owner}</p>
-                      <p className="text-[10px] text-muted-foreground">Owner</p>
-                    </div>
-                    <div className="text-center p-2 bg-amber-50 rounded-lg">
-                      <p className="font-bold text-amber-600">{roleCount.write}</p>
-                      <p className="text-[10px] text-muted-foreground">Write</p>
-                    </div>
-                    <div className="text-center p-2 bg-emerald-50 rounded-lg">
-                      <p className="font-bold text-emerald-600">{roleCount.read}</p>
-                      <p className="text-[10px] text-muted-foreground">Read</p>
-                    </div>
+                    <div className="text-center p-2 bg-blue-50 rounded-lg"><p className="font-bold text-blue-600">{roleCount.owner}</p><p className="text-[10px] text-muted-foreground">Owner</p></div>
+                    <div className="text-center p-2 bg-amber-50 rounded-lg"><p className="font-bold text-amber-600">{roleCount.write}</p><p className="text-[10px] text-muted-foreground">Write</p></div>
+                    <div className="text-center p-2 bg-emerald-50 rounded-lg"><p className="font-bold text-emerald-600">{roleCount.read}</p><p className="text-[10px] text-muted-foreground">Read</p></div>
                   </div>
                 </div>
 
-                {/* Subject Types */}
                 <div className="glass-card p-5">
                   <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                     <Users className="w-4 h-4 text-violet-500" /> Permission Subjects
@@ -889,7 +949,6 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Most Shared Files */}
               <div className="glass-card p-5">
                 <h3 className="text-sm font-semibold mb-4">Most Shared Files</h3>
                 <table className="w-full text-xs">
@@ -910,7 +969,7 @@ const Index = () => {
                           <td className="p-2.5"><DriveBadge type={drive?.drive_type || "personal"} /></td>
                           <td className="p-2.5">{perms.length} users</td>
                           <td className="p-2.5">
-                            <div className="flex gap-1">
+                            <div className="flex gap-1 flex-wrap">
                               {perms.map(p => (
                                 <span key={p.permission_id} className={`text-[9px] px-1.5 py-0.5 rounded ${
                                   p.role === "owner" ? "bg-blue-100 text-blue-700" :
@@ -993,9 +1052,9 @@ const Index = () => {
                           </div>
                         </div>
                       )}
-                      {(run as any).error_message && (
+                      {run.error_message && (
                         <div className="mt-3 p-2 bg-red-50 rounded text-xs text-red-600">
-                          ⚠️ {(run as any).error_message}
+                          ⚠️ {run.error_message}
                         </div>
                       )}
                     </motion.div>
