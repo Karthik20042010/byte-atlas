@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLiveData } from "@/hooks/useLiveData";
+import TickerNumber from "@/components/TickerNumber";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip,
@@ -126,22 +128,7 @@ function getAgentResponse(q: string): ChatMsg {
 }
 
 // ── Helpers ──
-function AnimatedCounter({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const duration = 1500;
-    const step = Math.max(1, Math.floor(value / 60));
-    const interval = duration / (value / step);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= value) { setDisplay(value); clearInterval(timer); }
-      else setDisplay(start);
-    }, interval);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span>{prefix}{display.toLocaleString()}{suffix}</span>;
-}
+// AnimatedCounter replaced by TickerNumber component
 
 const driveTypeColors: Record<string, string> = {
   personal: "bg-blue-100 text-blue-700",
@@ -179,7 +166,7 @@ function KPICard({ icon: Icon, label, value, suffix, prefix, color, delay, href 
         <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-[hsl(var(--primary))] transition-colors" />
       </div>
       <p className="text-2xl font-bold tracking-tight">
-        <AnimatedCounter value={value} suffix={suffix} prefix={prefix} />
+        <TickerNumber value={value} suffix={suffix} prefix={prefix} showDelta />
       </p>
       <p className="text-xs text-muted-foreground mt-1">{label}</p>
     </motion.div>
