@@ -492,7 +492,7 @@ const Index = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <KPICard icon={FileText} label="Total Files" value={totalFiles} color="bg-blue-100 text-blue-600" delay={0.1} href="/storage" />
-                <KPICard icon={Database} label="Total Storage" value={Math.round(totalSize / 1048576)} suffix=" MB" color="bg-emerald-100 text-emerald-600" delay={0.15} href="/storage" />
+                <KPICard icon={Database} label="Total Storage" value={Math.round(liveTotalSize / 1048576)} suffix=" MB" color="bg-emerald-100 text-emerald-600" delay={0.15} href="/storage" />
                 <KPICard icon={Cloud} label="Total Drives" value={mockDrives.length} color="bg-violet-100 text-violet-600" delay={0.2} href="/drives" />
                 <KPICard icon={Copy} label="Duplicates" value={duplicateFileCount} color="bg-amber-100 text-amber-600" delay={0.25} href="/duplicates" />
                 <KPICard icon={GitBranch} label="File Versions" value={mockFileVersions.length} color="bg-sky-100 text-sky-600" delay={0.3} href="/versions" />
