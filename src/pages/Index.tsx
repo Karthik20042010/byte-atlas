@@ -270,6 +270,7 @@ const SUGGESTED_PROMPTS = [
 // ═══════════════════════════════════════════════════════════════════
 const Index = () => {
   const navigate = useNavigate();
+  const { liveSync, liveFileCount, liveTotalSize, liveItemsSynced } = useLiveData(3000);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
     { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. Ask me about drives, file versions, permissions, sync status, or duplicates across your OneDrive ecosystem." },
   ]);
@@ -280,7 +281,9 @@ const Index = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [explorerDrive, setExplorerDrive] = useState(mockDrives[0].drive_id);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
   const sendMessage = () => {
