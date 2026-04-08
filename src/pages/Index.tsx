@@ -456,9 +456,16 @@ const Index = () => {
               </h1>
               <p className="text-xs text-muted-foreground mt-1">Real-time analytics across {mockDrives.length} drives · {mockUsers.length} users</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-[10px] text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live · Updated {lastRefresh.toLocaleTimeString()}
+              </div>
               <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> {mockSyncRuns.filter(s => s.status === "succeeded").length}/{mockSyncRuns.length} Synced
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> {liveSync.filter(s => s.status === "succeeded").length}/{liveSync.length} Synced
+              </Badge>
+              <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 bg-blue-50">
+                <TickerNumber value={liveItemsSynced} /> items synced
               </Badge>
             </div>
           </motion.div>
