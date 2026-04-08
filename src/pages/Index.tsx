@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLiveData } from "@/hooks/useLiveData";
+import TickerNumber from "@/components/TickerNumber";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip,
@@ -126,22 +128,7 @@ function getAgentResponse(q: string): ChatMsg {
 }
 
 // ── Helpers ──
-function AnimatedCounter({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const duration = 1500;
-    const step = Math.max(1, Math.floor(value / 60));
-    const interval = duration / (value / step);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= value) { setDisplay(value); clearInterval(timer); }
-      else setDisplay(start);
-    }, interval);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span>{prefix}{display.toLocaleString()}{suffix}</span>;
-}
+// AnimatedCounter replaced by TickerNumber component
 
 const driveTypeColors: Record<string, string> = {
   personal: "bg-blue-100 text-blue-700",
@@ -179,7 +166,7 @@ function KPICard({ icon: Icon, label, value, suffix, prefix, color, delay, href 
         <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-[hsl(var(--primary))] transition-colors" />
       </div>
       <p className="text-2xl font-bold tracking-tight">
-        <AnimatedCounter value={value} suffix={suffix} prefix={prefix} />
+        <TickerNumber value={value} suffix={suffix} prefix={prefix} showDelta />
       </p>
       <p className="text-xs text-muted-foreground mt-1">{label}</p>
     </motion.div>
@@ -283,6 +270,7 @@ const SUGGESTED_PROMPTS = [
 // ═══════════════════════════════════════════════════════════════════
 const Index = () => {
   const navigate = useNavigate();
+  const { liveSync, liveFileCount, liveTotalSize, liveItemsSynced } = useLiveData(3000);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
     { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. Ask me about drives, file versions, permissions, sync status, or duplicates across your OneDrive ecosystem." },
   ]);
@@ -293,7 +281,9 @@ const Index = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [explorerDrive, setExplorerDrive] = useState(mockDrives[0].drive_id);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
   const sendMessage = () => {
@@ -466,9 +456,16 @@ const Index = () => {
               </h1>
               <p className="text-xs text-muted-foreground mt-1">Real-time analytics across {mockDrives.length} drives · {mockUsers.length} users</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-[10px] text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live · Updated {lastRefresh.toLocaleTimeString()}
+              </div>
               <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> {mockSyncRuns.filter(s => s.status === "succeeded").length}/{mockSyncRuns.length} Synced
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> {liveSync.filter(s => s.status === "succeeded").length}/{liveSync.length} Synced
+              </Badge>
+              <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 bg-blue-50">
+                <TickerNumber value={liveItemsSynced} /> items synced
               </Badge>
             </div>
           </motion.div>
@@ -494,8 +491,8 @@ const Index = () => {
           {activeTab === "overview" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <KPICard icon={FileText} label="Total Files" value={totalFiles} color="bg-blue-100 text-blue-600" delay={0.1} href="/storage" />
-                <KPICard icon={Database} label="Total Storage" value={Math.round(totalSize / 1048576)} suffix=" MB" color="bg-emerald-100 text-emerald-600" delay={0.15} href="/storage" />
+                <KPICard icon={FileText} label="Total Files" value={liveFileCount} color="bg-blue-100 text-blue-600" delay={0.1} href="/storage" />
+                <KPICard icon={Database} label="Total Storage" value={Math.round(liveTotalSize / 1048576)} suffix=" MB" color="bg-emerald-100 text-emerald-600" delay={0.15} href="/storage" />
                 <KPICard icon={Cloud} label="Total Drives" value={mockDrives.length} color="bg-violet-100 text-violet-600" delay={0.2} href="/drives" />
                 <KPICard icon={Copy} label="Duplicates" value={duplicateFileCount} color="bg-amber-100 text-amber-600" delay={0.25} href="/duplicates" />
                 <KPICard icon={GitBranch} label="File Versions" value={mockFileVersions.length} color="bg-sky-100 text-sky-600" delay={0.3} href="/versions" />
@@ -996,23 +993,27 @@ const Index = () => {
           {/* ═══ SYNC TAB ═══ */}
           {activeTab === "sync" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-emerald-500">{mockSyncRuns.filter(s => s.status === "succeeded").length}</p>
+                  <p className="text-2xl font-bold text-emerald-500">{liveSync.filter(s => s.status === "succeeded").length}</p>
                   <p className="text-xs text-muted-foreground">Succeeded</p>
                 </div>
                 <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-500">{mockSyncRuns.filter(s => s.status === "running").length}</p>
+                  <p className="text-2xl font-bold text-blue-500">{liveSync.filter(s => s.status === "running").length}</p>
                   <p className="text-xs text-muted-foreground">Running</p>
                 </div>
                 <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-red-500">{mockSyncRuns.filter(s => s.status === "failed").length}</p>
+                  <p className="text-2xl font-bold text-red-500">{liveSync.filter(s => s.status === "failed").length}</p>
                   <p className="text-xs text-muted-foreground">Failed</p>
+                </div>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold text-[hsl(var(--primary))]"><TickerNumber value={liveSync.reduce((a, s) => a + s.stats_json.items_synced, 0)} showDelta /></p>
+                  <p className="text-xs text-muted-foreground">Total Items Synced</p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                {mockSyncRuns.map((run, idx) => {
+                {liveSync.map((run, idx) => {
                   const drive = mockDrives.find(d => d.drive_id === run.drive_id);
                   return (
                     <motion.div key={run.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
@@ -1039,15 +1040,15 @@ const Index = () => {
                       {run.stats_json && (
                         <div className="grid grid-cols-3 gap-2 mt-3">
                           <div className="p-2 bg-secondary rounded text-center">
-                            <p className="font-bold text-sm">{run.stats_json.items_synced}</p>
+                            <p className="font-bold text-sm"><TickerNumber value={run.stats_json.items_synced} showDelta={run.status === "running"} /></p>
                             <p className="text-[10px] text-muted-foreground">Synced</p>
                           </div>
                           <div className="p-2 bg-secondary rounded text-center">
-                            <p className="font-bold text-sm">{run.stats_json.items_added}</p>
+                            <p className="font-bold text-sm"><TickerNumber value={run.stats_json.items_added} showDelta={run.status === "running"} /></p>
                             <p className="text-[10px] text-muted-foreground">Added</p>
                           </div>
                           <div className="p-2 bg-secondary rounded text-center">
-                            <p className="font-bold text-sm">{run.stats_json.items_modified}</p>
+                            <p className="font-bold text-sm"><TickerNumber value={run.stats_json.items_modified} showDelta={run.status === "running"} /></p>
                             <p className="text-[10px] text-muted-foreground">Modified</p>
                           </div>
                         </div>
