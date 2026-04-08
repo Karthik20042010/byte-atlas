@@ -1,13 +1,11 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GitBranch, Download, CheckCircle2 } from "lucide-react";
+import { GitBranch, CheckCircle2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { mockItems, mockDrives, mockUsers, mockFileVersions, formatSize, exportToCSV, tooltipStyle } from "@/lib/mockData";
+import PageHeader from "@/components/PageHeader";
 
 const VersionsDetail = () => {
-  const navigate = useNavigate();
-
   const versionCounts: Record<string, number> = {};
   mockFileVersions.forEach(v => { versionCounts[v.item_id] = (versionCounts[v.item_id] || 0) + 1; });
   const multiVersionFiles = Object.entries(versionCounts).filter(([, c]) => c > 1).sort((a, b) => b[1] - a[1]);
@@ -32,16 +30,12 @@ const VersionsDetail = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1200px] mx-auto space-y-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/")} className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition"><ArrowLeft className="w-4 h-4" /></button>
-            <div>
-              <h1 className="text-2xl font-bold"><span className="gradient-text">File Version History</span></h1>
-              <p className="text-xs text-muted-foreground">{totalVersions} versions across {Object.keys(versionCounts).length} versioned files</p>
-            </div>
-          </div>
-          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:opacity-90 transition"><Download className="w-3.5 h-3.5" /> Export CSV</button>
-        </motion.div>
+        <PageHeader
+          title="File Version History"
+          subtitle={`${totalVersions} versions across ${Object.keys(versionCounts).length} versioned files`}
+          breadcrumbs={[{ label: "File Versions" }]}
+          onExport={handleExport}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[

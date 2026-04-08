@@ -1,13 +1,11 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Share2, Download, Eye, Edit3, Shield, Users, User } from "lucide-react";
+import { Share2, Shield, Edit3, Eye, Users, User } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer, Legend } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { mockItems, mockDrives, mockUsers, mockPermissions, mockSubjects, formatSize, exportToCSV, tooltipStyle } from "@/lib/mockData";
+import PageHeader from "@/components/PageHeader";
 
 const SharedFilesDetail = () => {
-  const navigate = useNavigate();
-
   const sharedItemIds = new Set(mockPermissions.filter(p => p.role !== "owner").map(p => p.item_id));
   const sharedFiles = mockItems.filter(i => sharedItemIds.has(i.item_id) && i.item_type === "file");
 
@@ -37,16 +35,12 @@ const SharedFilesDetail = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1200px] mx-auto space-y-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/")} className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition"><ArrowLeft className="w-4 h-4" /></button>
-            <div>
-              <h1 className="text-2xl font-bold"><span className="gradient-text">Shared Files & Permissions</span></h1>
-              <p className="text-xs text-muted-foreground">{sharedFiles.length} files shared · {mockPermissions.length} permission entries</p>
-            </div>
-          </div>
-          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:opacity-90 transition"><Download className="w-3.5 h-3.5" /> Export CSV</button>
-        </motion.div>
+        <PageHeader
+          title="Shared Files & Permissions"
+          subtitle={`${sharedFiles.length} files shared · ${mockPermissions.length} permission entries`}
+          breadcrumbs={[{ label: "Shared Files" }]}
+          onExport={handleExport}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[

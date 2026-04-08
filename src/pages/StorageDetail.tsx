@@ -1,11 +1,10 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Database, Download, TrendingUp, HardDrive } from "lucide-react";
+import { Database, HardDrive, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
 import { mockItems, mockDrives, mockUsers, formatSize, exportToCSV, STORAGE_GROWTH, CATEGORY_DATA, DRIVE_COLORS, tooltipStyle } from "@/lib/mockData";
+import PageHeader from "@/components/PageHeader";
 
 const StorageDetail = () => {
-  const navigate = useNavigate();
   const totalSize = mockItems.filter(i => i.item_type === "file").reduce((a, i) => a + i.size, 0);
 
   const driveStorageData = mockDrives.map(d => {
@@ -34,20 +33,12 @@ const StorageDetail = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1200px] mx-auto space-y-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/")} className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold"><span className="gradient-text">Total Storage Analysis</span></h1>
-              <p className="text-xs text-muted-foreground">Detailed breakdown of {formatSize(totalSize)} across {mockDrives.length} drives</p>
-            </div>
-          </div>
-          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:opacity-90 transition">
-            <Download className="w-3.5 h-3.5" /> Export CSV
-          </button>
-        </motion.div>
+        <PageHeader
+          title="Total Storage Analysis"
+          subtitle={`Detailed breakdown of ${formatSize(totalSize)} across ${mockDrives.length} drives`}
+          breadcrumbs={[{ label: "Storage Analysis" }]}
+          onExport={handleExport}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
