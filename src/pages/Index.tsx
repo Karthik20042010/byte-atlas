@@ -993,18 +993,22 @@ const Index = () => {
           {/* ═══ SYNC TAB ═══ */}
           {activeTab === "sync" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-emerald-500">{mockSyncRuns.filter(s => s.status === "succeeded").length}</p>
+                  <p className="text-2xl font-bold text-emerald-500">{liveSync.filter(s => s.status === "succeeded").length}</p>
                   <p className="text-xs text-muted-foreground">Succeeded</p>
                 </div>
                 <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-500">{mockSyncRuns.filter(s => s.status === "running").length}</p>
+                  <p className="text-2xl font-bold text-blue-500">{liveSync.filter(s => s.status === "running").length}</p>
                   <p className="text-xs text-muted-foreground">Running</p>
                 </div>
                 <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-red-500">{mockSyncRuns.filter(s => s.status === "failed").length}</p>
+                  <p className="text-2xl font-bold text-red-500">{liveSync.filter(s => s.status === "failed").length}</p>
                   <p className="text-xs text-muted-foreground">Failed</p>
+                </div>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold text-[hsl(var(--primary))]"><TickerNumber value={liveSync.reduce((a, s) => a + s.stats_json.items_synced, 0)} showDelta /></p>
+                  <p className="text-xs text-muted-foreground">Total Items Synced</p>
                 </div>
               </div>
 
