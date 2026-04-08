@@ -1013,7 +1013,7 @@ const Index = () => {
               </div>
 
               <div className="space-y-3">
-                {mockSyncRuns.map((run, idx) => {
+                {liveSync.map((run, idx) => {
                   const drive = mockDrives.find(d => d.drive_id === run.drive_id);
                   return (
                     <motion.div key={run.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
@@ -1040,15 +1040,15 @@ const Index = () => {
                       {run.stats_json && (
                         <div className="grid grid-cols-3 gap-2 mt-3">
                           <div className="p-2 bg-secondary rounded text-center">
-                            <p className="font-bold text-sm">{run.stats_json.items_synced}</p>
+                            <p className="font-bold text-sm"><TickerNumber value={run.stats_json.items_synced} showDelta={run.status === "running"} /></p>
                             <p className="text-[10px] text-muted-foreground">Synced</p>
                           </div>
                           <div className="p-2 bg-secondary rounded text-center">
-                            <p className="font-bold text-sm">{run.stats_json.items_added}</p>
+                            <p className="font-bold text-sm"><TickerNumber value={run.stats_json.items_added} showDelta={run.status === "running"} /></p>
                             <p className="text-[10px] text-muted-foreground">Added</p>
                           </div>
                           <div className="p-2 bg-secondary rounded text-center">
-                            <p className="font-bold text-sm">{run.stats_json.items_modified}</p>
+                            <p className="font-bold text-sm"><TickerNumber value={run.stats_json.items_modified} showDelta={run.status === "running"} /></p>
                             <p className="text-[10px] text-muted-foreground">Modified</p>
                           </div>
                         </div>
