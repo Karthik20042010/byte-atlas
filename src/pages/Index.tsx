@@ -280,11 +280,13 @@ const Index = () => {
   const [chatInput, setChatInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [driveFilter, setDriveFilter] = useState("All");
+  const [deptFilter, setDeptFilter] = useState<"All" | Department>("All");
   const [activeTab, setActiveTab] = useState<"overview" | "drives" | "versions" | "permissions" | "sync" | "explorer">("overview");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [explorerDrive, setExplorerDrive] = useState(mockDrives[0].drive_id);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [toastsShown, setToastsShown] = useState(false);
 
   const termTooltipStyle = darkMode
     ? { background: "hsl(0,0%,4%)", border: "1px solid hsl(120,30%,15%)", borderRadius: 8, fontSize: 11, color: "hsl(120,100%,50%)" }
@@ -292,6 +294,35 @@ const Index = () => {
 
   useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  // Toast notifications for sync failures and duplicates
+  useEffect(() => {
+    if (toastsShown) return;
+    setToastsShown(true);
+    const failedSyncs = liveSync.filter(s => s.status === "failed");
+    if (failedSyncs.length > 0) {
+      failedSyncs.forEach(s => {
+        const drive = mockDrives.find(d => d.drive_id === s.drive_id);
+        toast.error(`Sync Failed: ${drive?.name || s.drive_id}`, {
+          description: s.error_message || "Unknown error",
+          duration: 8000,
+        });
+      });
+    }
+    // Duplicate detection toast
+    const checksums: Record<string, string[]> = {};
+    mockFileProperties.forEach(fp => {
+      if (!checksums[fp.checksum]) checksums[fp.checksum] = [];
+      checksums[fp.checksum].push(fp.item_id);
+    });
+    const dupeCount = Object.values(checksums).filter(ids => ids.length > 1).length;
+    if (dupeCount > 0) {
+      toast.warning(`${dupeCount} duplicate file group(s) detected`, {
+        description: "Files with matching checksums found across drives",
+        duration: 6000,
+      });
+    }
+  }, [toastsShown, liveSync]);
 
   const sendMessage = () => {
     if (!chatInput.trim()) return;
