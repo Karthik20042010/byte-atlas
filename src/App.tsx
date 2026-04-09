@@ -10,6 +10,8 @@ import DrivesDetail from "./pages/DrivesDetail.tsx";
 import DuplicatesDetail from "./pages/DuplicatesDetail.tsx";
 import VersionsDetail from "./pages/VersionsDetail.tsx";
 import SharedFilesDetail from "./pages/SharedFilesDetail.tsx";
+import UsersOverview from "./pages/UsersOverview.tsx";
+import UserDetail from "./pages/UserDetail.tsx";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/duplicates" element={<DuplicatesDetail />} />
           <Route path="/versions" element={<VersionsDetail />} />
           <Route path="/shared" element={<SharedFilesDetail />} />
+          <Route path="/users" element={<UsersOverview />} />
+          <Route path="/users/:userId" element={<UserDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
