@@ -463,6 +463,15 @@ const Index = () => {
               <p className="text-xs text-muted-foreground mt-1">Real-time analytics across {mockDrives.length} drives · {mockUsers.length} users</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Terminal Dark Mode Toggle */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
+                <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
+                <Switch checked={darkMode} onCheckedChange={setDarkMode} className="scale-75" />
+                <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className={`text-[10px] font-medium ${darkMode ? "terminal-cursor" : "text-muted-foreground"}`}>
+                  {darkMode ? "TERMINAL" : "Light"}
+                </span>
+              </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-[10px] text-muted-foreground">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live · Updated {lastRefresh.toLocaleTimeString()}
