@@ -771,21 +771,25 @@ const Index = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead><tr className="border-b border-border">
-                      {["File Name", "Drive", "Type", "Size", "Created By", "Path"].map(h => (
+                      {["File Name", "Drive", "Department", "Type", "Size", "Created By", "Path"].map(h => (
                         <th key={h} className="text-left p-2.5 text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
-                      {filteredFiles.map(f => (
-                        <tr key={f.item_id} className="border-b border-border/50 last:border-0 hover:bg-secondary/50 transition-colors">
-                          <td className="p-2.5 font-medium">{f.name}</td>
-                          <td className="p-2.5"><DriveBadge type={mockDrives.find(d => d.drive_id === f.drive_id)?.drive_type || "personal"} /></td>
-                          <td className="p-2.5 text-muted-foreground">{mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || ""}</td>
-                          <td className="p-2.5">{formatSize(f.size)}</td>
-                          <td className="p-2.5 text-muted-foreground">{mockUsers.find(u => u.user_id === f.created_by)?.name || ""}</td>
-                          <td className="p-2.5 text-muted-foreground font-mono text-[10px] max-w-[200px] truncate">{f.path_display}</td>
-                        </tr>
-                      ))}
+                      {filteredFiles.map(f => {
+                        const creator = mockUsers.find(u => u.user_id === f.created_by);
+                        return (
+                          <tr key={f.item_id} className="border-b border-border/50 last:border-0 hover:bg-secondary/50 transition-colors">
+                            <td className="p-2.5 font-medium">{f.name}</td>
+                            <td className="p-2.5"><DriveBadge type={mockDrives.find(d => d.drive_id === f.drive_id)?.drive_type || "personal"} /></td>
+                            <td className="p-2.5"><Badge variant="outline" className="text-[9px]">{creator?.department || "—"}</Badge></td>
+                            <td className="p-2.5 text-muted-foreground">{mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || ""}</td>
+                            <td className="p-2.5">{formatSize(f.size)}</td>
+                            <td className="p-2.5 text-muted-foreground">{creator?.name || ""}</td>
+                            <td className="p-2.5 text-muted-foreground font-mono text-[10px] max-w-[200px] truncate">{f.path_display}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
