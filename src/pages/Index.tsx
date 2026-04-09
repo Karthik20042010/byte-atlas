@@ -413,15 +413,19 @@ const Index = () => {
   const explorerTree = useMemo(() => buildTree(explorerDrive), [explorerDrive]);
 
   const handleExportFiles = () => {
-    const headers = ["File Name", "Drive", "Type", "Size", "Created By", "Path"];
-    const rows = filteredFiles.map(f => [
-      f.name,
-      mockDrives.find(d => d.drive_id === f.drive_id)?.name || "",
-      mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || "",
-      formatSize(f.size),
-      mockUsers.find(u => u.user_id === f.created_by)?.name || "",
-      f.path_display,
-    ]);
+    const headers = ["File Name", "Drive", "Department", "Type", "Size", "Created By", "Path"];
+    const rows = filteredFiles.map(f => {
+      const creator = mockUsers.find(u => u.user_id === f.created_by);
+      return [
+        f.name,
+        mockDrives.find(d => d.drive_id === f.drive_id)?.name || "",
+        creator?.department || "",
+        mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || "",
+        formatSize(f.size),
+        creator?.name || "",
+        f.path_display,
+      ];
+    });
     exportToCSV(headers, rows, "file_search_export.csv");
   };
 
