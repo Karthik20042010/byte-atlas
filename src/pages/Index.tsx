@@ -18,10 +18,11 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import {
   mockUsers, mockDrives, mockItems, mockFileProperties, mockFileVersions,
   mockPermissions, mockSyncRuns, mockSubjects, STORAGE_GROWTH, CATEGORY_DATA,
-  formatSize, exportToCSV, DRIVE_COLORS, tooltipStyle
+  formatSize, exportToCSV, DRIVE_COLORS, tooltipStyle, DEPARTMENTS, type Department
 } from "@/lib/mockData";
 
 // ── Agent Response Logic ──
@@ -279,11 +280,13 @@ const Index = () => {
   const [chatInput, setChatInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [driveFilter, setDriveFilter] = useState("All");
+  const [deptFilter, setDeptFilter] = useState<"All" | Department>("All");
   const [activeTab, setActiveTab] = useState<"overview" | "drives" | "versions" | "permissions" | "sync" | "explorer">("overview");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [explorerDrive, setExplorerDrive] = useState(mockDrives[0].drive_id);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [toastsShown, setToastsShown] = useState(false);
 
   const termTooltipStyle = darkMode
     ? { background: "hsl(0,0%,4%)", border: "1px solid hsl(120,30%,15%)", borderRadius: 8, fontSize: 11, color: "hsl(120,100%,50%)" }
@@ -291,6 +294,35 @@ const Index = () => {
 
   useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  // Toast notifications for sync failures and duplicates
+  useEffect(() => {
+    if (toastsShown) return;
+    setToastsShown(true);
+    const failedSyncs = liveSync.filter(s => s.status === "failed");
+    if (failedSyncs.length > 0) {
+      failedSyncs.forEach(s => {
+        const drive = mockDrives.find(d => d.drive_id === s.drive_id);
+        toast.error(`Sync Failed: ${drive?.name || s.drive_id}`, {
+          description: s.error_message || "Unknown error",
+          duration: 8000,
+        });
+      });
+    }
+    // Duplicate detection toast
+    const checksums: Record<string, string[]> = {};
+    mockFileProperties.forEach(fp => {
+      if (!checksums[fp.checksum]) checksums[fp.checksum] = [];
+      checksums[fp.checksum].push(fp.item_id);
+    });
+    const dupeCount = Object.values(checksums).filter(ids => ids.length > 1).length;
+    if (dupeCount > 0) {
+      toast.warning(`${dupeCount} duplicate file group(s) detected`, {
+        description: "Files with matching checksums found across drives",
+        duration: 6000,
+      });
+    }
+  }, [toastsShown, liveSync]);
 
   const sendMessage = () => {
     if (!chatInput.trim()) return;
@@ -323,7 +355,38 @@ const Index = () => {
     if (f.item_type !== "file") return false;
     const matchSearch = !searchQuery || f.name.toLowerCase().includes(searchQuery.toLowerCase()) || f.path_display.toLowerCase().includes(searchQuery.toLowerCase());
     const matchDrive = driveFilter === "All" || f.drive_id === driveFilter;
-    return matchSearch && matchDrive;
+    const matchDept = deptFilter === "All" || mockUsers.find(u => u.user_id === f.created_by)?.department === deptFilter;
+    return matchSearch && matchDrive && matchDept;
+  });
+
+  // Per-user duplicate analysis
+  const userDuplicateStats = mockUsers.map(user => {
+    const userFiles = mockItems.filter(i => i.created_by === user.user_id && i.item_type === "file");
+    const userFileIds = new Set(userFiles.map(f => f.item_id));
+    let dupeCount = 0;
+    let dupeSize = 0;
+    duplicateGroups.forEach(([, ids]) => {
+      const userDupes = ids.filter(id => userFileIds.has(id));
+      if (userDupes.length > 0) {
+        dupeCount += userDupes.length;
+        dupeSize += userDupes.length * (mockItems.find(i => i.item_id === ids[0])?.size || 0);
+      }
+    });
+    return { ...user, dupeCount, dupeSize, fileCount: userFiles.length, storageUsed: userFiles.reduce((a, f) => a + f.size, 0) };
+  }).sort((a, b) => b.dupeCount - a.dupeCount);
+
+  // Department duplicate analysis
+  const deptDuplicateStats = DEPARTMENTS.map(dept => {
+    const deptUsers = mockUsers.filter(u => u.department === dept);
+    const deptUserIds = new Set(deptUsers.map(u => u.user_id));
+    const deptFiles = mockItems.filter(i => deptUserIds.has(i.created_by) && i.item_type === "file");
+    const deptFileIds = new Set(deptFiles.map(f => f.item_id));
+    let dupeCount = 0;
+    duplicateGroups.forEach(([, ids]) => {
+      const deptDupes = ids.filter(id => deptFileIds.has(id));
+      dupeCount += deptDupes.length;
+    });
+    return { dept, fileCount: deptFiles.length, storage: deptFiles.reduce((a, f) => a + f.size, 0), dupeCount, userCount: deptUsers.length };
   });
 
   const versionCounts: Record<string, number> = {};
@@ -338,11 +401,7 @@ const Index = () => {
     { name: "Read", value: roleCount.read, color: "hsl(142,71%,40%)" },
   ];
 
-  const userActivity = mockUsers.map(u => {
-    const fileCount = mockItems.filter(i => i.created_by === u.user_id && i.item_type === "file").length;
-    const storageUsed = mockItems.filter(i => i.created_by === u.user_id && i.item_type === "file").reduce((a, i) => a + i.size, 0);
-    return { ...u, fileCount, storageUsed };
-  }).sort((a, b) => b.storageUsed - a.storageUsed);
+  // userActivity replaced by userDuplicateStats above
 
   const alertColors: Record<string, string> = {
     warning: "border-l-[hsl(var(--warning))] bg-amber-50",
@@ -354,15 +413,19 @@ const Index = () => {
   const explorerTree = useMemo(() => buildTree(explorerDrive), [explorerDrive]);
 
   const handleExportFiles = () => {
-    const headers = ["File Name", "Drive", "Type", "Size", "Created By", "Path"];
-    const rows = filteredFiles.map(f => [
-      f.name,
-      mockDrives.find(d => d.drive_id === f.drive_id)?.name || "",
-      mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || "",
-      formatSize(f.size),
-      mockUsers.find(u => u.user_id === f.created_by)?.name || "",
-      f.path_display,
-    ]);
+    const headers = ["File Name", "Drive", "Department", "Type", "Size", "Created By", "Path"];
+    const rows = filteredFiles.map(f => {
+      const creator = mockUsers.find(u => u.user_id === f.created_by);
+      return [
+        f.name,
+        mockDrives.find(d => d.drive_id === f.drive_id)?.name || "",
+        creator?.department || "",
+        mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || "",
+        formatSize(f.size),
+        creator?.name || "",
+        f.path_display,
+      ];
+    });
     exportToCSV(headers, rows, "file_search_export.csv");
   };
 
@@ -606,25 +669,74 @@ const Index = () => {
                 </motion.div>
               </div>
 
-              {/* User Activity */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-5">
+              {/* Department Analytics */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48 }} className="glass-card p-5">
                 <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-violet-500" /> User Activity
+                  <Layers className="w-4 h-4 text-[hsl(var(--primary))]" /> Department Analytics
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  {userActivity.map(u => (
-                    <div key={u.user_id} className="p-3 bg-secondary/50 rounded-lg text-center">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center mx-auto mb-2">
-                        <span className="text-white text-xs font-bold">{u.name.split(" ").map(n => n[0]).join("")}</span>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  {deptDuplicateStats.map(d => (
+                    <div key={d.dept} className="p-4 bg-secondary/50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold">{d.dept}</p>
+                        <Badge variant="outline" className="text-[9px]">{d.userCount} users</Badge>
                       </div>
-                      <p className="text-xs font-medium truncate">{u.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{u.fileCount} files · {formatSize(u.storageUsed)}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><p className="text-lg font-bold">{d.fileCount}</p><p className="text-[10px] text-muted-foreground">Files</p></div>
+                        <div><p className="text-lg font-bold">{formatSize(d.storage)}</p><p className="text-[10px] text-muted-foreground">Storage</p></div>
+                      </div>
+                      {d.dupeCount > 0 && (
+                        <div className="mt-2 p-1.5 bg-amber-50 rounded text-[10px] text-amber-700 flex items-center gap-1">
+                          <Copy className="w-3 h-3" /> {d.dupeCount} duplicate files
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </motion.div>
 
-              {/* File Search with Export */}
+              {/* User Activity with Duplicate Stats */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-5">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-violet-500" /> User Activity & Duplicate Analysis
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead><tr className="border-b border-border">
+                      {["User", "Department", "Files", "Storage", "Duplicates", "Dupe Storage"].map(h => (
+                        <th key={h} className="text-left p-2.5 text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr></thead>
+                    <tbody>
+                      {userDuplicateStats.map(u => (
+                        <tr key={u.user_id} className="border-b border-border/50 last:border-0 hover:bg-secondary/50">
+                          <td className="p-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center shrink-0">
+                                <span className="text-white text-[9px] font-bold">{u.name.split(" ").map(n => n[0]).join("")}</span>
+                              </div>
+                              <span className="font-medium">{u.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-2.5"><Badge variant="outline" className="text-[9px]">{u.department}</Badge></td>
+                          <td className="p-2.5">{u.fileCount}</td>
+                          <td className="p-2.5">{formatSize(u.storageUsed)}</td>
+                          <td className="p-2.5">
+                            {u.dupeCount > 0 ? (
+                              <span className="text-amber-600 font-medium">{u.dupeCount}</span>
+                            ) : (
+                              <span className="text-emerald-600">0</span>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-muted-foreground">{u.dupeCount > 0 ? formatSize(u.dupeSize) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+
+              {/* File Search with Department + Drive Filters */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -634,8 +746,8 @@ const Index = () => {
                     <Download className="w-3 h-3" /> Export CSV
                   </button>
                 </div>
-                <div className="flex gap-3 mb-4">
-                  <div className="relative flex-1">
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                     <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search files by name or path..."
                       className="pl-9 text-xs bg-secondary border-0" />
@@ -646,7 +758,16 @@ const Index = () => {
                     {["All", ...mockDrives.map(d => d.drive_id)].map(s => (
                       <button key={s} onClick={() => setDriveFilter(s)}
                         className={`text-[10px] px-2 py-1 rounded-full transition-colors ${driveFilter === s ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-secondary-foreground hover:bg-[hsl(var(--primary))]/10"}`}>
-                        {s === "All" ? "All" : mockDrives.find(d => d.drive_id === s)?.name.split(" ")[0] || s}
+                        {s === "All" ? "All Drives" : mockDrives.find(d => d.drive_id === s)?.name.split(" ")[0] || s}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    {(["All", ...DEPARTMENTS] as const).map(d => (
+                      <button key={d} onClick={() => setDeptFilter(d)}
+                        className={`text-[10px] px-2 py-1 rounded-full transition-colors ${deptFilter === d ? "bg-[hsl(var(--accent))] text-white" : "bg-secondary text-secondary-foreground hover:bg-[hsl(var(--accent))]/10"}`}>
+                        {d}
                       </button>
                     ))}
                   </div>
@@ -654,21 +775,25 @@ const Index = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead><tr className="border-b border-border">
-                      {["File Name", "Drive", "Type", "Size", "Created By", "Path"].map(h => (
+                      {["File Name", "Drive", "Department", "Type", "Size", "Created By", "Path"].map(h => (
                         <th key={h} className="text-left p-2.5 text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
-                      {filteredFiles.map(f => (
-                        <tr key={f.item_id} className="border-b border-border/50 last:border-0 hover:bg-secondary/50 transition-colors">
-                          <td className="p-2.5 font-medium">{f.name}</td>
-                          <td className="p-2.5"><DriveBadge type={mockDrives.find(d => d.drive_id === f.drive_id)?.drive_type || "personal"} /></td>
-                          <td className="p-2.5 text-muted-foreground">{mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || ""}</td>
-                          <td className="p-2.5">{formatSize(f.size)}</td>
-                          <td className="p-2.5 text-muted-foreground">{mockUsers.find(u => u.user_id === f.created_by)?.name || ""}</td>
-                          <td className="p-2.5 text-muted-foreground font-mono text-[10px] max-w-[200px] truncate">{f.path_display}</td>
-                        </tr>
-                      ))}
+                      {filteredFiles.map(f => {
+                        const creator = mockUsers.find(u => u.user_id === f.created_by);
+                        return (
+                          <tr key={f.item_id} className="border-b border-border/50 last:border-0 hover:bg-secondary/50 transition-colors">
+                            <td className="p-2.5 font-medium">{f.name}</td>
+                            <td className="p-2.5"><DriveBadge type={mockDrives.find(d => d.drive_id === f.drive_id)?.drive_type || "personal"} /></td>
+                            <td className="p-2.5"><Badge variant="outline" className="text-[9px]">{creator?.department || "—"}</Badge></td>
+                            <td className="p-2.5 text-muted-foreground">{mockFileProperties.find(fp => fp.item_id === f.item_id)?.extension || ""}</td>
+                            <td className="p-2.5">{formatSize(f.size)}</td>
+                            <td className="p-2.5 text-muted-foreground">{creator?.name || ""}</td>
+                            <td className="p-2.5 text-muted-foreground font-mono text-[10px] max-w-[200px] truncate">{f.path_display}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

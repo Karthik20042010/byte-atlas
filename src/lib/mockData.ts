@@ -2,12 +2,15 @@
 // Shared Mock Data — aligned to OneDrive DB schema
 // ═══════════════════════════════════════════════════════════════════
 
+export const DEPARTMENTS = ["Finance", "Engineering", "Operations", "Sales"] as const;
+export type Department = typeof DEPARTMENTS[number];
+
 export const mockUsers = [
-  { user_id: "u-001", aad_user_id: "aad-f1a2", name: "Priya Sharma", email: "priya.sharma@acme.com", user_principal_name: "priya.sharma@acme.com" },
-  { user_id: "u-002", aad_user_id: "aad-b3c4", name: "Rahul Mehta", email: "rahul.mehta@acme.com", user_principal_name: "rahul.mehta@acme.com" },
-  { user_id: "u-003", aad_user_id: "aad-d5e6", name: "Anita Desai", email: "anita.desai@acme.com", user_principal_name: "anita.desai@acme.com" },
-  { user_id: "u-004", aad_user_id: "aad-g7h8", name: "Vikram Singh", email: "vikram.singh@acme.com", user_principal_name: "vikram.singh@acme.com" },
-  { user_id: "u-005", aad_user_id: "aad-i9j0", name: "Neha Gupta", email: "neha.gupta@acme.com", user_principal_name: "neha.gupta@acme.com" },
+  { user_id: "u-001", aad_user_id: "aad-f1a2", name: "Priya Sharma", email: "priya.sharma@acme.com", user_principal_name: "priya.sharma@acme.com", department: "Finance" as Department },
+  { user_id: "u-002", aad_user_id: "aad-b3c4", name: "Rahul Mehta", email: "rahul.mehta@acme.com", user_principal_name: "rahul.mehta@acme.com", department: "Engineering" as Department },
+  { user_id: "u-003", aad_user_id: "aad-d5e6", name: "Anita Desai", email: "anita.desai@acme.com", user_principal_name: "anita.desai@acme.com", department: "Finance" as Department },
+  { user_id: "u-004", aad_user_id: "aad-g7h8", name: "Vikram Singh", email: "vikram.singh@acme.com", user_principal_name: "vikram.singh@acme.com", department: "Operations" as Department },
+  { user_id: "u-005", aad_user_id: "aad-i9j0", name: "Neha Gupta", email: "neha.gupta@acme.com", user_principal_name: "neha.gupta@acme.com", department: "Sales" as Department },
 ];
 
 export const mockDrives = [
