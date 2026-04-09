@@ -458,9 +458,11 @@ const Index = () => {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                <span className="gradient-text">OneDrive File Intelligence</span>
+                {darkMode ? <span className="terminal-cursor text-foreground">OneDrive File Intelligence</span> : <span className="gradient-text">OneDrive File Intelligence</span>}
               </h1>
-              <p className="text-xs text-muted-foreground mt-1">Real-time analytics across {mockDrives.length} drives · {mockUsers.length} users</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {darkMode ? `> scanning ${mockDrives.length} drives · ${mockUsers.length} users` : `Real-time analytics across ${mockDrives.length} drives · ${mockUsers.length} users`}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               {/* Terminal Dark Mode Toggle */}
