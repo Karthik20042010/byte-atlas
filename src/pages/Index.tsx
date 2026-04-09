@@ -18,10 +18,11 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import {
   mockUsers, mockDrives, mockItems, mockFileProperties, mockFileVersions,
   mockPermissions, mockSyncRuns, mockSubjects, STORAGE_GROWTH, CATEGORY_DATA,
-  formatSize, exportToCSV, DRIVE_COLORS, tooltipStyle
+  formatSize, exportToCSV, DRIVE_COLORS, tooltipStyle, DEPARTMENTS, type Department
 } from "@/lib/mockData";
 
 // ── Agent Response Logic ──
