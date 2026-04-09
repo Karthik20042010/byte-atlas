@@ -12,8 +12,9 @@ import {
   FileText, AlertTriangle, TrendingUp, Copy, Layers, ShieldAlert,
   ChevronRight, ChevronDown, Filter, X, Sparkles, ArrowUpRight, BarChart3,
   Users, RefreshCw, Shield, GitBranch, FolderOpen, CheckCircle2,
-  XCircle, Clock, Share2, Eye, Edit3, Folder, File, Download
+  XCircle, Clock, Share2, Eye, Edit3, Folder, File, Download, Monitor, Terminal
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -271,6 +272,7 @@ const SUGGESTED_PROMPTS = [
 const Index = () => {
   const navigate = useNavigate();
   const { liveSync, liveFileCount, liveTotalSize, liveItemsSynced } = useLiveData(3000);
+  const [darkMode, setDarkMode] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
     { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. Ask me about drives, file versions, permissions, sync status, or duplicates across your OneDrive ecosystem." },
   ]);
@@ -282,6 +284,10 @@ const Index = () => {
   const [explorerDrive, setExplorerDrive] = useState(mockDrives[0].drive_id);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  const termTooltipStyle = darkMode
+    ? { background: "hsl(0,0%,4%)", border: "1px solid hsl(120,30%,15%)", borderRadius: 8, fontSize: 11, color: "hsl(120,100%,50%)" }
+    : tooltipStyle;
 
   useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
@@ -361,7 +367,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className={`flex h-screen overflow-hidden bg-background ${darkMode ? "terminal-dark" : ""}`}>
       {/* ── LEFT: Chat Panel ── */}
       <motion.div initial={{ x: -320 }} animate={{ x: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-[340px] min-w-[340px] flex flex-col border-r border-border bg-card">
@@ -371,8 +377,8 @@ const Index = () => {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-sm">OneDrive Intelligence Agent</h2>
-              <p className="text-[10px] text-muted-foreground">Drives · Versions · Permissions · Sync</p>
+              <h2 className="font-bold text-sm">{darkMode ? <span className="terminal-cursor">OneDrive Scanner</span> : "OneDrive Intelligence Agent"}</h2>
+              <p className="text-[10px] text-muted-foreground">{darkMode ? "$ scanning drives..." : "Drives · Versions · Permissions · Sync"}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 mt-3">
@@ -452,11 +458,22 @@ const Index = () => {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                <span className="gradient-text">OneDrive File Intelligence</span>
+                {darkMode ? <span className="terminal-cursor text-foreground">OneDrive File Intelligence</span> : <span className="gradient-text">OneDrive File Intelligence</span>}
               </h1>
-              <p className="text-xs text-muted-foreground mt-1">Real-time analytics across {mockDrives.length} drives · {mockUsers.length} users</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {darkMode ? `> scanning ${mockDrives.length} drives · ${mockUsers.length} users` : `Real-time analytics across ${mockDrives.length} drives · ${mockUsers.length} users`}
+              </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Terminal Dark Mode Toggle */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
+                <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
+                <Switch checked={darkMode} onCheckedChange={setDarkMode} className="scale-75" />
+                <Terminal className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className={`text-[10px] font-medium ${darkMode ? "terminal-cursor" : "text-muted-foreground"}`}>
+                  {darkMode ? "TERMINAL" : "Light"}
+                </span>
+              </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-[10px] text-muted-foreground">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live · Updated {lastRefresh.toLocaleTimeString()}
@@ -510,7 +527,7 @@ const Index = () => {
                       <Pie data={driveStorageData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                         {driveStorageData.map((_, i) => <Cell key={i} fill={DRIVE_COLORS[i % DRIVE_COLORS.length]} />)}
                       </Pie>
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -523,7 +540,7 @@ const Index = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,13%,91%)" />
                       <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} width={80} />
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Bar dataKey="size" radius={[0, 4, 4, 0]} fill="url(#barGrad)" />
                       <defs>
                         <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
@@ -547,7 +564,7 @@ const Index = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,13%,91%)" />
                       <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} />
                       <YAxis tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} />
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Line type="monotone" dataKey="storage" stroke="hsl(217,91%,50%)" strokeWidth={2} dot={{ fill: "hsl(217,91%,50%)", r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -907,7 +924,7 @@ const Index = () => {
                       <Pie data={permissionPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                         {permissionPieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                       </Pie>
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                     </PieChart>
                   </ResponsiveContainer>
