@@ -355,7 +355,38 @@ const Index = () => {
     if (f.item_type !== "file") return false;
     const matchSearch = !searchQuery || f.name.toLowerCase().includes(searchQuery.toLowerCase()) || f.path_display.toLowerCase().includes(searchQuery.toLowerCase());
     const matchDrive = driveFilter === "All" || f.drive_id === driveFilter;
-    return matchSearch && matchDrive;
+    const matchDept = deptFilter === "All" || mockUsers.find(u => u.user_id === f.created_by)?.department === deptFilter;
+    return matchSearch && matchDrive && matchDept;
+  });
+
+  // Per-user duplicate analysis
+  const userDuplicateStats = mockUsers.map(user => {
+    const userFiles = mockItems.filter(i => i.created_by === user.user_id && i.item_type === "file");
+    const userFileIds = new Set(userFiles.map(f => f.item_id));
+    let dupeCount = 0;
+    let dupeSize = 0;
+    duplicateGroups.forEach(([, ids]) => {
+      const userDupes = ids.filter(id => userFileIds.has(id));
+      if (userDupes.length > 0) {
+        dupeCount += userDupes.length;
+        dupeSize += userDupes.length * (mockItems.find(i => i.item_id === ids[0])?.size || 0);
+      }
+    });
+    return { ...user, dupeCount, dupeSize, fileCount: userFiles.length, storageUsed: userFiles.reduce((a, f) => a + f.size, 0) };
+  }).sort((a, b) => b.dupeCount - a.dupeCount);
+
+  // Department duplicate analysis
+  const deptDuplicateStats = DEPARTMENTS.map(dept => {
+    const deptUsers = mockUsers.filter(u => u.department === dept);
+    const deptUserIds = new Set(deptUsers.map(u => u.user_id));
+    const deptFiles = mockItems.filter(i => deptUserIds.has(i.created_by) && i.item_type === "file");
+    const deptFileIds = new Set(deptFiles.map(f => f.item_id));
+    let dupeCount = 0;
+    duplicateGroups.forEach(([, ids]) => {
+      const deptDupes = ids.filter(id => deptFileIds.has(id));
+      dupeCount += deptDupes.length;
+    });
+    return { dept, fileCount: deptFiles.length, storage: deptFiles.reduce((a, f) => a + f.size, 0), dupeCount, userCount: deptUsers.length };
   });
 
   const versionCounts: Record<string, number> = {};
