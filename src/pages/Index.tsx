@@ -12,8 +12,9 @@ import {
   FileText, AlertTriangle, TrendingUp, Copy, Layers, ShieldAlert,
   ChevronRight, ChevronDown, Filter, X, Sparkles, ArrowUpRight, BarChart3,
   Users, RefreshCw, Shield, GitBranch, FolderOpen, CheckCircle2,
-  XCircle, Clock, Share2, Eye, Edit3, Folder, File, Download
+  XCircle, Clock, Share2, Eye, Edit3, Folder, File, Download, Monitor, Terminal
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
