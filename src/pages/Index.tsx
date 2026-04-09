@@ -525,7 +525,7 @@ const Index = () => {
                       <Pie data={driveStorageData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                         {driveStorageData.map((_, i) => <Cell key={i} fill={DRIVE_COLORS[i % DRIVE_COLORS.length]} />)}
                       </Pie>
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -538,7 +538,7 @@ const Index = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,13%,91%)" />
                       <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} width={80} />
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Bar dataKey="size" radius={[0, 4, 4, 0]} fill="url(#barGrad)" />
                       <defs>
                         <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
@@ -562,7 +562,7 @@ const Index = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,13%,91%)" />
                       <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} />
                       <YAxis tick={{ fontSize: 10, fill: "hsl(220,9%,46%)" }} />
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Line type="monotone" dataKey="storage" stroke="hsl(217,91%,50%)" strokeWidth={2} dot={{ fill: "hsl(217,91%,50%)", r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -922,7 +922,7 @@ const Index = () => {
                       <Pie data={permissionPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                         {permissionPieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                       </Pie>
-                      <RTooltip contentStyle={tooltipStyle} />
+                      <RTooltip contentStyle={termTooltipStyle} />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                     </PieChart>
                   </ResponsiveContainer>
