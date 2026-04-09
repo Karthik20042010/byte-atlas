@@ -377,8 +377,8 @@ const Index = () => {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-sm">OneDrive Intelligence Agent</h2>
-              <p className="text-[10px] text-muted-foreground">Drives · Versions · Permissions · Sync</p>
+              <h2 className="font-bold text-sm">{darkMode ? <span className="terminal-cursor">OneDrive Scanner</span> : "OneDrive Intelligence Agent"}</h2>
+              <p className="text-[10px] text-muted-foreground">{darkMode ? "$ scanning drives..." : "Drives · Versions · Permissions · Sync"}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 mt-3">
