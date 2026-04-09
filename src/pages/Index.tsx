@@ -669,25 +669,74 @@ const Index = () => {
                 </motion.div>
               </div>
 
-              {/* User Activity */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-5">
+              {/* Department Analytics */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.48 }} className="glass-card p-5">
                 <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-violet-500" /> User Activity
+                  <Layers className="w-4 h-4 text-[hsl(var(--primary))]" /> Department Analytics
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  {userActivity.map(u => (
-                    <div key={u.user_id} className="p-3 bg-secondary/50 rounded-lg text-center">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center mx-auto mb-2">
-                        <span className="text-white text-xs font-bold">{u.name.split(" ").map(n => n[0]).join("")}</span>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  {deptDuplicateStats.map(d => (
+                    <div key={d.dept} className="p-4 bg-secondary/50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold">{d.dept}</p>
+                        <Badge variant="outline" className="text-[9px]">{d.userCount} users</Badge>
                       </div>
-                      <p className="text-xs font-medium truncate">{u.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{u.fileCount} files · {formatSize(u.storageUsed)}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><p className="text-lg font-bold">{d.fileCount}</p><p className="text-[10px] text-muted-foreground">Files</p></div>
+                        <div><p className="text-lg font-bold">{formatSize(d.storage)}</p><p className="text-[10px] text-muted-foreground">Storage</p></div>
+                      </div>
+                      {d.dupeCount > 0 && (
+                        <div className="mt-2 p-1.5 bg-amber-50 rounded text-[10px] text-amber-700 flex items-center gap-1">
+                          <Copy className="w-3 h-3" /> {d.dupeCount} duplicate files
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </motion.div>
 
-              {/* File Search with Export */}
+              {/* User Activity with Duplicate Stats */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-5">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-violet-500" /> User Activity & Duplicate Analysis
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead><tr className="border-b border-border">
+                      {["User", "Department", "Files", "Storage", "Duplicates", "Dupe Storage"].map(h => (
+                        <th key={h} className="text-left p-2.5 text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr></thead>
+                    <tbody>
+                      {userDuplicateStats.map(u => (
+                        <tr key={u.user_id} className="border-b border-border/50 last:border-0 hover:bg-secondary/50">
+                          <td className="p-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center shrink-0">
+                                <span className="text-white text-[9px] font-bold">{u.name.split(" ").map(n => n[0]).join("")}</span>
+                              </div>
+                              <span className="font-medium">{u.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-2.5"><Badge variant="outline" className="text-[9px]">{u.department}</Badge></td>
+                          <td className="p-2.5">{u.fileCount}</td>
+                          <td className="p-2.5">{formatSize(u.storageUsed)}</td>
+                          <td className="p-2.5">
+                            {u.dupeCount > 0 ? (
+                              <span className="text-amber-600 font-medium">{u.dupeCount}</span>
+                            ) : (
+                              <span className="text-emerald-600">0</span>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-muted-foreground">{u.dupeCount > 0 ? formatSize(u.dupeSize) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+
+              {/* File Search with Department + Drive Filters */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="glass-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -697,8 +746,8 @@ const Index = () => {
                     <Download className="w-3 h-3" /> Export CSV
                   </button>
                 </div>
-                <div className="flex gap-3 mb-4">
-                  <div className="relative flex-1">
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                     <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search files by name or path..."
                       className="pl-9 text-xs bg-secondary border-0" />
@@ -709,7 +758,16 @@ const Index = () => {
                     {["All", ...mockDrives.map(d => d.drive_id)].map(s => (
                       <button key={s} onClick={() => setDriveFilter(s)}
                         className={`text-[10px] px-2 py-1 rounded-full transition-colors ${driveFilter === s ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-secondary-foreground hover:bg-[hsl(var(--primary))]/10"}`}>
-                        {s === "All" ? "All" : mockDrives.find(d => d.drive_id === s)?.name.split(" ")[0] || s}
+                        {s === "All" ? "All Drives" : mockDrives.find(d => d.drive_id === s)?.name.split(" ")[0] || s}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    {(["All", ...DEPARTMENTS] as const).map(d => (
+                      <button key={d} onClick={() => setDeptFilter(d)}
+                        className={`text-[10px] px-2 py-1 rounded-full transition-colors ${deptFilter === d ? "bg-[hsl(var(--accent))] text-white" : "bg-secondary text-secondary-foreground hover:bg-[hsl(var(--accent))]/10"}`}>
+                        {d}
                       </button>
                     ))}
                   </div>
