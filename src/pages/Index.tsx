@@ -401,11 +401,7 @@ const Index = () => {
     { name: "Read", value: roleCount.read, color: "hsl(142,71%,40%)" },
   ];
 
-  const userActivity = mockUsers.map(u => {
-    const fileCount = mockItems.filter(i => i.created_by === u.user_id && i.item_type === "file").length;
-    const storageUsed = mockItems.filter(i => i.created_by === u.user_id && i.item_type === "file").reduce((a, i) => a + i.size, 0);
-    return { ...u, fileCount, storageUsed };
-  }).sort((a, b) => b.storageUsed - a.storageUsed);
+  // userActivity replaced by userDuplicateStats above
 
   const alertColors: Record<string, string> = {
     warning: "border-l-[hsl(var(--warning))] bg-amber-50",
