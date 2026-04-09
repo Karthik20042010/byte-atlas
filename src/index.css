@@ -112,3 +112,92 @@
     border-radius: 4px;
   }
 }
+
+/* ── Terminal Dark Mode (Matrix / PowerShell Theme) ── */
+.terminal-dark {
+  --background: 0 0% 0%;
+  --foreground: 120 100% 50%;
+  --card: 0 0% 4%;
+  --card-foreground: 120 100% 50%;
+  --popover: 0 0% 4%;
+  --popover-foreground: 120 100% 50%;
+  --primary: 120 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 120 20% 8%;
+  --secondary-foreground: 120 100% 50%;
+  --muted: 120 15% 10%;
+  --muted-foreground: 120 40% 45%;
+  --accent: 120 100% 40%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 0 0% 0%;
+  --border: 120 30% 15%;
+  --input: 120 20% 12%;
+  --ring: 120 100% 50%;
+  --success: 120 100% 50%;
+  --warning: 40 100% 50%;
+  --chart-s3: 120 100% 50%;
+  --chart-onedrive: 120 80% 40%;
+  --chart-nas: 120 60% 30%;
+  --chart-glacier: 120 100% 60%;
+  --sidebar-background: 0 0% 2%;
+  --sidebar-foreground: 120 100% 50%;
+  --sidebar-primary: 120 100% 50%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 120 20% 8%;
+  --sidebar-accent-foreground: 120 100% 50%;
+  --sidebar-border: 120 30% 15%;
+  --sidebar-ring: 120 100% 50%;
+}
+
+.terminal-dark {
+  font-family: 'JetBrains Mono', 'Courier New', monospace !important;
+}
+
+.terminal-dark * {
+  font-family: inherit !important;
+}
+
+.terminal-dark .glass-card {
+  @apply border-[hsl(120,30%,15%)] shadow-none;
+  background: hsl(0, 0%, 4%);
+  box-shadow: 0 0 8px hsl(120 100% 50% / 0.05);
+}
+
+.terminal-dark .stat-glow {
+  box-shadow: 0 0 20px -8px hsl(120 100% 50% / 0.15);
+}
+
+.terminal-dark .gradient-text {
+  background-image: linear-gradient(to right, hsl(120, 100%, 50%), hsl(120, 100%, 70%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.terminal-dark .chat-bubble-user {
+  background: linear-gradient(to right, hsl(120, 100%, 25%), hsl(120, 80%, 20%));
+  color: hsl(120, 100%, 80%);
+}
+
+.terminal-dark .chat-bubble-agent {
+  background: hsl(120, 20%, 8%);
+  color: hsl(120, 100%, 50%);
+}
+
+.terminal-dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(120, 30%, 20%);
+}
+
+/* Blinking cursor effect */
+.terminal-cursor::after {
+  content: '█';
+  animation: blink-cursor 1s step-end infinite;
+  color: hsl(120, 100%, 50%);
+  font-weight: normal;
+}
+
+@keyframes blink-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
