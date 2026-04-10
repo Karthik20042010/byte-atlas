@@ -12,6 +12,7 @@ import VersionsDetail from "./pages/VersionsDetail.tsx";
 import SharedFilesDetail from "./pages/SharedFilesDetail.tsx";
 import UsersOverview from "./pages/UsersOverview.tsx";
 import UserDetail from "./pages/UserDetail.tsx";
+import UserCompare from "./pages/UserCompare.tsx";
 
 const queryClient = new QueryClient();
 
