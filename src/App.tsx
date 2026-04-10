@@ -30,8 +30,8 @@ const App = () => (
           <Route path="/versions" element={<VersionsDetail />} />
           <Route path="/shared" element={<SharedFilesDetail />} />
           <Route path="/users" element={<UsersOverview />} />
-          <Route path="/users/:userId" element={<UserDetail />} />
           <Route path="/users/compare" element={<UserCompare />} />
+          <Route path="/users/:userId" element={<UserDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
