@@ -5,7 +5,7 @@ import {
   ResponsiveContainer, CartesianGrid, Legend
 } from "recharts";
 import {
-  Users, User, Copy, FileText, Database, ChevronRight, AlertTriangle, Download
+  Users, User, Copy, FileText, Database, ChevronRight, AlertTriangle, Download, ArrowLeftRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/PageHeader";
@@ -81,12 +81,18 @@ const UsersOverview = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[1400px] mx-auto p-6 space-y-6">
-        <PageHeader
-          title="User Analytics"
-          subtitle={`${mockUsers.length} users across ${DEPARTMENTS.length} departments`}
-          breadcrumbs={[{ label: "Users" }]}
-          onExport={handleExport}
-        />
+        <div className="flex items-center justify-between">
+          <PageHeader
+            title="User Analytics"
+            subtitle={`${mockUsers.length} users across ${DEPARTMENTS.length} departments`}
+            breadcrumbs={[{ label: "Users" }]}
+            onExport={handleExport}
+          />
+          <button onClick={() => navigate("/users/compare")}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] text-xs font-medium hover:bg-[hsl(var(--primary))]/20 transition-colors shrink-0">
+            <ArrowLeftRight className="w-3.5 h-3.5" /> Compare Users
+          </button>
+        </div>
 
         {/* KPI Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

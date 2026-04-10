@@ -528,6 +528,11 @@ const Index = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Users Analytics Link */}
+              <button onClick={() => navigate("/users")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] text-xs font-medium hover:bg-[hsl(var(--primary))]/20 transition-colors">
+                <Users className="w-3.5 h-3.5" /> User Analytics
+              </button>
               {/* Terminal Dark Mode Toggle */}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
                 <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
