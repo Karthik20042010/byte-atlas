@@ -696,12 +696,14 @@ const Index = () => {
                 {darkMode ? `> scanning ${mockDrives.length} drives · ${mockUsers.length} users` : `Real-time analytics across ${mockDrives.length} drives · ${mockUsers.length} users`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Users Analytics Link */}
               <button onClick={() => navigate("/users")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] text-xs font-medium hover:bg-[hsl(var(--primary))]/20 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
                 <Users className="w-3.5 h-3.5" /> User Analytics
               </button>
+              {/* Dark Mode Toggle */}
+              <ThemeToggle />
               {/* Terminal Dark Mode Toggle */}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
                 <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
@@ -712,13 +714,13 @@ const Index = () => {
                 </span>
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-[10px] text-muted-foreground">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] animate-pulse" />
                 Live · Updated {lastRefresh.toLocaleTimeString()}
               </div>
-              <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> {liveSync.filter(s => s.status === "succeeded").length}/{liveSync.length} Synced
+              <Badge variant="outline" className="text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 animate-pulse" /> {liveSync.filter(s => s.status === "succeeded").length}/{liveSync.length} Synced
               </Badge>
-              <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 bg-blue-50">
+              <Badge variant="outline" className="text-[10px]">
                 <TickerNumber value={liveItemsSynced} /> items synced
               </Badge>
             </div>
