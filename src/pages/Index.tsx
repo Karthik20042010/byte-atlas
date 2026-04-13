@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveData } from "@/hooks/useLiveData";
+import { callAI, type AIProvider, type AIMessage } from "@/lib/aiProviders";
 import TickerNumber from "@/components/TickerNumber";
 import { motion, AnimatePresence } from "framer-motion";
 import {
