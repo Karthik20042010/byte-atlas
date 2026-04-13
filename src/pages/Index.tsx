@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveData } from "@/hooks/useLiveData";
 import { callAI, type AIProvider, type AIMessage } from "@/lib/aiProviders";
 import TickerNumber from "@/components/TickerNumber";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip,
@@ -542,9 +543,9 @@ const Index = () => {
   // userActivity replaced by userDuplicateStats above
 
   const alertColors: Record<string, string> = {
-    warning: "border-l-[hsl(var(--warning))] bg-amber-50",
-    danger: "border-l-destructive bg-red-50",
-    info: "border-l-[hsl(var(--primary))] bg-blue-50",
+    warning: "border-l-[hsl(var(--warning))] bg-[hsl(var(--warning)/0.08)]",
+    danger: "border-l-destructive bg-destructive/5",
+    info: "border-l-primary bg-primary/5",
   };
 
   // File explorer tree
@@ -568,10 +569,10 @@ const Index = () => {
   };
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background ${darkMode ? "terminal-dark" : ""}`}>
+    <div className={`flex flex-col md:flex-row h-screen overflow-hidden bg-background ${darkMode ? "terminal-dark" : ""}`}>
       {/* ── LEFT: Chat Panel ── */}
       <motion.div initial={{ x: -320 }} animate={{ x: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-[340px] min-w-[340px] flex flex-col border-r border-border bg-card">
+        className="w-full md:w-[340px] md:min-w-[340px] flex flex-col border-b md:border-b-0 md:border-r border-border bg-card max-h-[40vh] md:max-h-none">
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
@@ -685,22 +686,24 @@ const Index = () => {
 
       {/* ── RIGHT: Dashboard ── */}
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-background">
-        <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+        <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
                 {darkMode ? <span className="terminal-cursor text-foreground">OneDrive File Intelligence</span> : <span className="gradient-text">OneDrive File Intelligence</span>}
               </h1>
               <p className="text-xs text-muted-foreground mt-1">
                 {darkMode ? `> scanning ${mockDrives.length} drives · ${mockUsers.length} users` : `Real-time analytics across ${mockDrives.length} drives · ${mockUsers.length} users`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Users Analytics Link */}
               <button onClick={() => navigate("/users")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] text-xs font-medium hover:bg-[hsl(var(--primary))]/20 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
                 <Users className="w-3.5 h-3.5" /> User Analytics
               </button>
+              {/* Dark Mode Toggle */}
+              <ThemeToggle />
               {/* Terminal Dark Mode Toggle */}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
                 <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
@@ -711,13 +714,13 @@ const Index = () => {
                 </span>
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-[10px] text-muted-foreground">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] animate-pulse" />
                 Live · Updated {lastRefresh.toLocaleTimeString()}
               </div>
-              <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> {liveSync.filter(s => s.status === "succeeded").length}/{liveSync.length} Synced
+              <Badge variant="outline" className="text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] mr-1.5 animate-pulse" /> {liveSync.filter(s => s.status === "succeeded").length}/{liveSync.length} Synced
               </Badge>
-              <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 bg-blue-50">
+              <Badge variant="outline" className="text-[10px]">
                 <TickerNumber value={liveItemsSynced} /> items synced
               </Badge>
             </div>
