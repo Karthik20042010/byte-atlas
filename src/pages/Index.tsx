@@ -27,10 +27,79 @@ import {
 } from "@/lib/mockData";
 
 // ── Agent Response Logic ──
-type ChatMsg = { role: "user" | "agent"; content: string; table?: { headers: string[]; rows: string[][] } };
+type ChatMsg = { role: "user" | "agent"; content: string; table?: { headers: string[]; rows: string[][] }; action?: { type: string; path?: string; tab?: string }; provider?: AIProvider; loading?: boolean };
 
-function getAgentResponse(q: string): ChatMsg {
+// Parse action blocks from AI response
+function parseActionFromResponse(content: string): { cleanContent: string; action?: { type: string; path?: string; tab?: string } } {
+  const actionMatch = content.match(/```action\s*\n([\s\S]*?)\n```/);
+  if (actionMatch) {
+    try {
+      const action = JSON.parse(actionMatch[1]);
+      const cleanContent = content.replace(/```action\s*\n[\s\S]*?\n```/g, "").trim();
+      return { cleanContent, action };
+    } catch { /* ignore parse errors */ }
+  }
+  return { cleanContent: content };
+}
+
+// Local fallback for data queries (instant, no API call needed)
+function getLocalAgentResponse(q: string): ChatMsg | null {
   const lq = q.toLowerCase();
+
+  // UI Navigation queries
+  if (lq.includes("where") && (lq.includes("duplicate") || lq.includes("dupe"))) {
+    return { role: "agent", content: "You can find **duplicate file analysis** in two places:\n\n1. The **Duplicates** detail page — click below to navigate\n2. On the main dashboard under the **Overview** tab, see the department duplicate breakdown\n\nNavigating you there now...", action: { type: "navigate", path: "/duplicates" } };
+  }
+  if (lq.includes("where") && (lq.includes("user") || lq.includes("people"))) {
+    return { role: "agent", content: "The **User Analytics** page shows all users, department breakdown, and who has the most duplicates. Navigating you there now...", action: { type: "navigate", path: "/users" } };
+  }
+  if (lq.includes("where") && (lq.includes("compare") || lq.includes("comparison"))) {
+    return { role: "agent", content: "The **User Comparison** tool lets you pick two users and see side-by-side metrics including storage, duplicates, versions, and shared files. Taking you there now...", action: { type: "navigate", path: "/users/compare" } };
+  }
+  if (lq.includes("where") && (lq.includes("shared") || lq.includes("permission") || lq.includes("sharing"))) {
+    return { role: "agent", content: "Shared files and permissions are on the **Shared Files** page. You can also see permissions in the **Permissions** tab on the dashboard. Navigating...", action: { type: "navigate", path: "/shared" } };
+  }
+  if (lq.includes("where") && (lq.includes("version") || lq.includes("history"))) {
+    return { role: "agent", content: "File version history is available on the **Versions** detail page. Taking you there...", action: { type: "navigate", path: "/versions" } };
+  }
+  if (lq.includes("where") && (lq.includes("storage") || lq.includes("space") || lq.includes("disk"))) {
+    return { role: "agent", content: "Storage breakdown is on the **Storage** detail page. Navigating now...", action: { type: "navigate", path: "/storage" } };
+  }
+  if (lq.includes("where") && (lq.includes("drive") || lq.includes("onedrive"))) {
+    return { role: "agent", content: "Drive-level analytics including sync status are on the **Drives** page. Navigating...", action: { type: "navigate", path: "/drives" } };
+  }
+  if (lq.includes("where") && (lq.includes("sync") || lq.includes("synchron"))) {
+    return { role: "agent", content: "Sync status is available in two places:\n1. **Sync** tab on the dashboard\n2. **Drives** detail page\n\nSwitching to the Sync tab now...", action: { type: "tab", tab: "sync" } };
+  }
+  if (lq.includes("where") && (lq.includes("explorer") || lq.includes("tree") || lq.includes("browse"))) {
+    return { role: "agent", content: "The **File Explorer** is in the Explorer tab on the dashboard. Switching now...", action: { type: "tab", tab: "explorer" } };
+  }
+  if ((lq.includes("show") || lq.includes("go to") || lq.includes("open") || lq.includes("take me") || lq.includes("navigate")) && lq.includes("user")) {
+    if (lq.includes("compare") || lq.includes("comparison")) {
+      return { role: "agent", content: "Opening the **User Comparison** tool...", action: { type: "navigate", path: "/users/compare" } };
+    }
+    // Check for specific user names
+    for (const u of mockUsers) {
+      if (lq.includes(u.name.toLowerCase().split(" ")[0].toLowerCase())) {
+        return { role: "agent", content: `Opening **${u.name}**'s profile...`, action: { type: "navigate", path: `/users/${u.user_id}` } };
+      }
+    }
+    return { role: "agent", content: "Opening **User Analytics** page...", action: { type: "navigate", path: "/users" } };
+  }
+  if ((lq.includes("show") || lq.includes("go to") || lq.includes("open") || lq.includes("switch")) && lq.includes("tab")) {
+    const tabs = ["overview", "drives", "versions", "permissions", "sync", "explorer"];
+    for (const t of tabs) {
+      if (lq.includes(t)) return { role: "agent", content: `Switching to the **${t}** tab...`, action: { type: "tab", tab: t } };
+    }
+  }
+  if (lq.includes("how") && (lq.includes("export") || lq.includes("download") || lq.includes("csv") || lq.includes("pdf"))) {
+    return { role: "agent", content: "You can **export data** in several ways:\n\n1. **Dashboard**: Click the 'Export CSV' button at the top right to export the current file search results\n2. **User Comparison**: Navigate to `/users/compare`, select two users, then use the CSV or PDF export buttons\n3. **Detail pages**: Each detail page (Storage, Drives, etc.) has export functionality\n\nWould you like me to take you to the comparison page to export a report?" };
+  }
+  if (lq.includes("help") || lq.includes("what can you do") || lq.includes("how to use")) {
+    return { role: "agent", content: "I can help you with:\n\n📊 **Data Queries**: Ask about drives, files, duplicates, versions, permissions, sync status, departments\n🧭 **Navigation**: Say 'show me users' or 'where are duplicates' and I'll take you there\n🔄 **Actions**: I can switch tabs, navigate pages, and open user profiles\n📥 **Export**: I can guide you to export reports as CSV or PDF\n\nTry: *'Show me Priya's profile'* or *'Where can I see sync status?'*" };
+  }
+
+  // Data queries (keep existing logic)
   if (lq.includes("duplicate")) {
     const checksumMap: Record<string, string[]> = {};
     mockFileProperties.forEach(fp => {
@@ -124,10 +193,20 @@ function getAgentResponse(q: string): ChatMsg {
       },
     };
   }
-  return {
-    role: "agent",
-    content: `I analyzed your OneDrive ecosystem: **${mockDrives.length} drives**, **${mockItems.filter(i => i.item_type === "file").length} files**, **${mockFileVersions.length} file versions**, **${mockPermissions.length} permissions**. Try asking about drives, duplicates, versions, permissions, or sync status.`,
-  };
+  if (lq.includes("department")) {
+    const deptStats = DEPARTMENTS.map(dept => {
+      const users = mockUsers.filter(u => u.department === dept);
+      const files = mockItems.filter(i => users.some(u => u.user_id === i.created_by) && i.item_type === "file");
+      return [dept, String(users.length), String(files.length), formatSize(files.reduce((a, f) => a + f.size, 0))];
+    });
+    return {
+      role: "agent",
+      content: "**Department breakdown:**",
+      table: { headers: ["Department", "Users", "Files", "Storage"], rows: deptStats },
+    };
+  }
+
+  return null; // Not a local query — send to AI
 }
 
 // ── Helpers ──
