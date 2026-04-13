@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveData } from "@/hooks/useLiveData";
 import { callAI, type AIProvider, type AIMessage } from "@/lib/aiProviders";
 import TickerNumber from "@/components/TickerNumber";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip,
