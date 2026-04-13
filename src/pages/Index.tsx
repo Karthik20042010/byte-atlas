@@ -613,15 +613,32 @@ const Index = () => {
                   <div className="flex gap-2 max-w-[90%]">
                     {msg.role === "agent" && (
                       <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 flex items-center justify-center mt-1 shrink-0">
-                        <Bot className="w-3.5 h-3.5 text-[hsl(var(--primary))]" />
+                        <Bot className={`w-3.5 h-3.5 text-[hsl(var(--primary))] ${msg.loading ? "animate-spin" : ""}`} />
                       </div>
                     )}
                     <div>
                       <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-agent"}>
                         <p className="text-xs leading-relaxed whitespace-pre-line">
-                          {msg.content.split("**").map((part, idx) => idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part)}
+                          {msg.content.split(/(\*\*.*?\*\*|\*.*?\*)/g).map((part, idx) => {
+                            if (part.startsWith("**") && part.endsWith("**")) return <strong key={idx}>{part.slice(2, -2)}</strong>;
+                            if (part.startsWith("*") && part.endsWith("*")) return <em key={idx}>{part.slice(1, -1)}</em>;
+                            return part;
+                          })}
                         </p>
                       </div>
+                      {/* Action badge */}
+                      {msg.action && (
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                            <ArrowUpRight className="w-2.5 h-2.5" />
+                            {msg.action.type === "navigate" ? `→ ${msg.action.path}` : `Tab: ${msg.action.tab}`}
+                          </span>
+                        </div>
+                      )}
+                      {/* Provider badge */}
+                      {msg.provider && (
+                        <span className="text-[8px] text-muted-foreground mt-0.5 inline-block">via {msg.provider}</span>
+                      )}
                       {msg.table && (
                         <div className="mt-2 glass-card overflow-hidden">
                           <table className="w-full text-[10px]">
@@ -655,11 +672,12 @@ const Index = () => {
         <div className="p-3 border-t border-border">
           <div className="flex gap-2">
             <Input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()}
-              placeholder="Ask about your OneDrive files..."
+              placeholder={isAiThinking ? "AI is thinking..." : "Ask about files, navigate, or get help..."}
+              disabled={isAiThinking}
               className="text-xs bg-secondary border-0 focus-visible:ring-1 focus-visible:ring-[hsl(var(--primary))]" />
-            <button onClick={sendMessage}
-              className="w-9 h-9 rounded-lg bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center hover:opacity-90 transition shrink-0">
-              <Send className="w-4 h-4 text-white" />
+            <button onClick={sendMessage} disabled={isAiThinking}
+              className="w-9 h-9 rounded-lg bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center hover:opacity-90 transition shrink-0 disabled:opacity-50">
+              <Send className={`w-4 h-4 text-white ${isAiThinking ? "animate-pulse" : ""}`} />
             </button>
           </div>
         </div>
