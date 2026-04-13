@@ -569,7 +569,7 @@ const Index = () => {
   };
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background ${darkMode ? "terminal-dark" : ""}`}>
+    <div className={`flex flex-col md:flex-row h-screen overflow-hidden bg-background ${darkMode ? "terminal-dark" : ""}`}>
       {/* ── LEFT: Chat Panel ── */}
       <motion.div initial={{ x: -320 }} animate={{ x: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-[340px] min-w-[340px] flex flex-col border-r border-border bg-card">
