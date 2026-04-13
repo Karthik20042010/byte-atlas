@@ -341,10 +341,11 @@ const ALERTS = [
 const SUGGESTED_PROMPTS = [
   "Show drives overview",
   "Find duplicate files",
-  "Files with most versions",
-  "Shared files analysis",
-  "Sync status",
-  "Permission breakdown",
+  "Where are duplicates?",
+  "Show me Priya's profile",
+  "Department breakdown",
+  "How to export data?",
+  "Help",
 ];
 
 // ═══════════════════════════════════════════════════════════════════
