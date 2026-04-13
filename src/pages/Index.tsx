@@ -577,12 +577,24 @@ const Index = () => {
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="font-bold text-sm">{darkMode ? <span className="terminal-cursor">OneDrive Scanner</span> : "OneDrive Intelligence Agent"}</h2>
-              <p className="text-[10px] text-muted-foreground">{darkMode ? "$ scanning drives..." : "Drives · Versions · Permissions · Sync"}</p>
+              <p className="text-[10px] text-muted-foreground">{darkMode ? "$ scanning drives..." : "Data · Navigation · Actions"}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          {/* AI Provider Toggle */}
+          <div className="flex items-center gap-2 mt-2 mb-3">
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider">AI:</span>
+            <button onClick={() => setAiProvider("vllm")}
+              className={`text-[9px] px-2 py-0.5 rounded-full transition-colors ${aiProvider === "vllm" ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              vLLM
+            </button>
+            <button onClick={() => setAiProvider("bedrock")}
+              className={`text-[9px] px-2 py-0.5 rounded-full transition-colors ${aiProvider === "bedrock" ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              Bedrock
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             {SUGGESTED_PROMPTS.map(p => (
               <button key={p} onClick={() => setChatInput(p)}
                 className="text-[10px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground hover:bg-[hsl(var(--primary))]/10 hover:text-[hsl(var(--primary))] transition-colors">
