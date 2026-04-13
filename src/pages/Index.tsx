@@ -687,9 +687,9 @@ const Index = () => {
       {/* ── RIGHT: Dashboard ── */}
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-background">
         <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
                 {darkMode ? <span className="terminal-cursor text-foreground">OneDrive File Intelligence</span> : <span className="gradient-text">OneDrive File Intelligence</span>}
               </h1>
               <p className="text-xs text-muted-foreground mt-1">
