@@ -354,8 +354,9 @@ const Index = () => {
   const navigate = useNavigate();
   const { liveSync, liveFileCount, liveTotalSize, liveItemsSynced } = useLiveData(3000);
   const [darkMode, setDarkMode] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AIProvider>("vllm");
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
-    { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. Ask me about drives, file versions, permissions, sync status, or duplicates across your OneDrive ecosystem." },
+    { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. I can answer data queries, navigate you to any page, and automate UI actions.\n\nTry: *'Where are duplicates?'*, *'Show me Priya's profile'*, or ask about drives, versions, permissions, sync, departments." },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -367,6 +368,7 @@ const Index = () => {
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [toastsShown, setToastsShown] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
 
   const termTooltipStyle = darkMode
     ? { background: "hsl(0,0%,4%)", border: "1px solid hsl(120,30%,15%)", borderRadius: 8, fontSize: 11, color: "hsl(120,100%,50%)" }
@@ -374,6 +376,17 @@ const Index = () => {
 
   useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  // Execute action from agent response
+  const executeAction = useCallback((action: { type: string; path?: string; tab?: string }) => {
+    if (action.type === "navigate" && action.path) {
+      setTimeout(() => navigate(action.path!), 800);
+      toast.info(`Navigating to ${action.path}...`);
+    } else if (action.type === "tab" && action.tab) {
+      setActiveTab(action.tab as any);
+      toast.info(`Switched to ${action.tab} tab`);
+    }
+  }, [navigate]);
 
   // Toast notifications for sync failures and duplicates
   useEffect(() => {
@@ -389,7 +402,6 @@ const Index = () => {
         });
       });
     }
-    // Duplicate detection toast
     const checksums: Record<string, string[]> = {};
     mockFileProperties.forEach(fp => {
       if (!checksums[fp.checksum]) checksums[fp.checksum] = [];
@@ -404,12 +416,57 @@ const Index = () => {
     }
   }, [toastsShown, liveSync]);
 
-  const sendMessage = () => {
-    if (!chatInput.trim()) return;
-    const userMsg: ChatMsg = { role: "user", content: chatInput };
+  const sendMessage = async () => {
+    if (!chatInput.trim() || isAiThinking) return;
+    const userInput = chatInput;
+    const userMsg: ChatMsg = { role: "user", content: userInput };
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput("");
-    setTimeout(() => { setChatMessages(prev => [...prev, getAgentResponse(chatInput)]); }, 600);
+
+    // Try local response first (instant)
+    const localResponse = getLocalAgentResponse(userInput);
+    if (localResponse) {
+      setTimeout(() => {
+        setChatMessages(prev => [...prev, localResponse]);
+        if (localResponse.action) executeAction(localResponse.action);
+      }, 400);
+      return;
+    }
+
+    // Fall back to AI provider
+    setIsAiThinking(true);
+    setChatMessages(prev => [...prev, { role: "agent", content: "Thinking...", loading: true }]);
+
+    try {
+      const history: AIMessage[] = chatMessages
+        .filter(m => !m.loading)
+        .map(m => ({ role: m.role === "agent" ? "assistant" as const : "user" as const, content: m.content }));
+      history.push({ role: "user", content: userInput });
+
+      const result = await callAI(history, aiProvider, () => {
+        toast.info(`Switched to fallback AI provider`);
+      });
+
+      const { cleanContent, action } = parseActionFromResponse(result.content);
+
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => !m.loading);
+        return [...filtered, { role: "agent", content: cleanContent, provider: result.provider, action }];
+      });
+
+      if (action) executeAction(action);
+    } catch (err) {
+      console.error("AI call failed:", err);
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => !m.loading);
+        return [...filtered, {
+          role: "agent",
+          content: `I couldn't reach the AI service. Here's what I know locally:\n\n**${mockDrives.length} drives**, **${mockItems.filter(i => i.item_type === "file").length} files**, **${mockFileVersions.length} versions**, **${mockPermissions.length} permissions**.\n\nTry asking about drives, duplicates, versions, permissions, sync, departments, or navigation.`
+        }];
+      });
+    } finally {
+      setIsAiThinking(false);
+    }
   };
 
   const totalSize = mockItems.filter(i => i.item_type === "file").reduce((a, i) => a + i.size, 0);
