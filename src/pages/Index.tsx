@@ -572,7 +572,7 @@ const Index = () => {
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden bg-background ${darkMode ? "terminal-dark" : ""}`}>
       {/* ── LEFT: Chat Panel ── */}
       <motion.div initial={{ x: -320 }} animate={{ x: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-[340px] min-w-[340px] flex flex-col border-r border-border bg-card">
+        className="w-full md:w-[340px] md:min-w-[340px] flex flex-col border-b md:border-b-0 md:border-r border-border bg-card max-h-[40vh] md:max-h-none">
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
@@ -686,7 +686,7 @@ const Index = () => {
 
       {/* ── RIGHT: Dashboard ── */}
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-background">
-        <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
