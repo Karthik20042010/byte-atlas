@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveData } from "@/hooks/useLiveData";
+import { callAI, type AIProvider, type AIMessage } from "@/lib/aiProviders";
 import TickerNumber from "@/components/TickerNumber";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,10 +27,79 @@ import {
 } from "@/lib/mockData";
 
 // ── Agent Response Logic ──
-type ChatMsg = { role: "user" | "agent"; content: string; table?: { headers: string[]; rows: string[][] } };
+type ChatMsg = { role: "user" | "agent"; content: string; table?: { headers: string[]; rows: string[][] }; action?: { type: string; path?: string; tab?: string }; provider?: AIProvider; loading?: boolean };
 
-function getAgentResponse(q: string): ChatMsg {
+// Parse action blocks from AI response
+function parseActionFromResponse(content: string): { cleanContent: string; action?: { type: string; path?: string; tab?: string } } {
+  const actionMatch = content.match(/```action\s*\n([\s\S]*?)\n```/);
+  if (actionMatch) {
+    try {
+      const action = JSON.parse(actionMatch[1]);
+      const cleanContent = content.replace(/```action\s*\n[\s\S]*?\n```/g, "").trim();
+      return { cleanContent, action };
+    } catch { /* ignore parse errors */ }
+  }
+  return { cleanContent: content };
+}
+
+// Local fallback for data queries (instant, no API call needed)
+function getLocalAgentResponse(q: string): ChatMsg | null {
   const lq = q.toLowerCase();
+
+  // UI Navigation queries
+  if (lq.includes("where") && (lq.includes("duplicate") || lq.includes("dupe"))) {
+    return { role: "agent", content: "You can find **duplicate file analysis** in two places:\n\n1. The **Duplicates** detail page — click below to navigate\n2. On the main dashboard under the **Overview** tab, see the department duplicate breakdown\n\nNavigating you there now...", action: { type: "navigate", path: "/duplicates" } };
+  }
+  if (lq.includes("where") && (lq.includes("user") || lq.includes("people"))) {
+    return { role: "agent", content: "The **User Analytics** page shows all users, department breakdown, and who has the most duplicates. Navigating you there now...", action: { type: "navigate", path: "/users" } };
+  }
+  if (lq.includes("where") && (lq.includes("compare") || lq.includes("comparison"))) {
+    return { role: "agent", content: "The **User Comparison** tool lets you pick two users and see side-by-side metrics including storage, duplicates, versions, and shared files. Taking you there now...", action: { type: "navigate", path: "/users/compare" } };
+  }
+  if (lq.includes("where") && (lq.includes("shared") || lq.includes("permission") || lq.includes("sharing"))) {
+    return { role: "agent", content: "Shared files and permissions are on the **Shared Files** page. You can also see permissions in the **Permissions** tab on the dashboard. Navigating...", action: { type: "navigate", path: "/shared" } };
+  }
+  if (lq.includes("where") && (lq.includes("version") || lq.includes("history"))) {
+    return { role: "agent", content: "File version history is available on the **Versions** detail page. Taking you there...", action: { type: "navigate", path: "/versions" } };
+  }
+  if (lq.includes("where") && (lq.includes("storage") || lq.includes("space") || lq.includes("disk"))) {
+    return { role: "agent", content: "Storage breakdown is on the **Storage** detail page. Navigating now...", action: { type: "navigate", path: "/storage" } };
+  }
+  if (lq.includes("where") && (lq.includes("drive") || lq.includes("onedrive"))) {
+    return { role: "agent", content: "Drive-level analytics including sync status are on the **Drives** page. Navigating...", action: { type: "navigate", path: "/drives" } };
+  }
+  if (lq.includes("where") && (lq.includes("sync") || lq.includes("synchron"))) {
+    return { role: "agent", content: "Sync status is available in two places:\n1. **Sync** tab on the dashboard\n2. **Drives** detail page\n\nSwitching to the Sync tab now...", action: { type: "tab", tab: "sync" } };
+  }
+  if (lq.includes("where") && (lq.includes("explorer") || lq.includes("tree") || lq.includes("browse"))) {
+    return { role: "agent", content: "The **File Explorer** is in the Explorer tab on the dashboard. Switching now...", action: { type: "tab", tab: "explorer" } };
+  }
+  if ((lq.includes("show") || lq.includes("go to") || lq.includes("open") || lq.includes("take me") || lq.includes("navigate")) && lq.includes("user")) {
+    if (lq.includes("compare") || lq.includes("comparison")) {
+      return { role: "agent", content: "Opening the **User Comparison** tool...", action: { type: "navigate", path: "/users/compare" } };
+    }
+    // Check for specific user names
+    for (const u of mockUsers) {
+      if (lq.includes(u.name.toLowerCase().split(" ")[0].toLowerCase())) {
+        return { role: "agent", content: `Opening **${u.name}**'s profile...`, action: { type: "navigate", path: `/users/${u.user_id}` } };
+      }
+    }
+    return { role: "agent", content: "Opening **User Analytics** page...", action: { type: "navigate", path: "/users" } };
+  }
+  if ((lq.includes("show") || lq.includes("go to") || lq.includes("open") || lq.includes("switch")) && lq.includes("tab")) {
+    const tabs = ["overview", "drives", "versions", "permissions", "sync", "explorer"];
+    for (const t of tabs) {
+      if (lq.includes(t)) return { role: "agent", content: `Switching to the **${t}** tab...`, action: { type: "tab", tab: t } };
+    }
+  }
+  if (lq.includes("how") && (lq.includes("export") || lq.includes("download") || lq.includes("csv") || lq.includes("pdf"))) {
+    return { role: "agent", content: "You can **export data** in several ways:\n\n1. **Dashboard**: Click the 'Export CSV' button at the top right to export the current file search results\n2. **User Comparison**: Navigate to `/users/compare`, select two users, then use the CSV or PDF export buttons\n3. **Detail pages**: Each detail page (Storage, Drives, etc.) has export functionality\n\nWould you like me to take you to the comparison page to export a report?" };
+  }
+  if (lq.includes("help") || lq.includes("what can you do") || lq.includes("how to use")) {
+    return { role: "agent", content: "I can help you with:\n\n📊 **Data Queries**: Ask about drives, files, duplicates, versions, permissions, sync status, departments\n🧭 **Navigation**: Say 'show me users' or 'where are duplicates' and I'll take you there\n🔄 **Actions**: I can switch tabs, navigate pages, and open user profiles\n📥 **Export**: I can guide you to export reports as CSV or PDF\n\nTry: *'Show me Priya's profile'* or *'Where can I see sync status?'*" };
+  }
+
+  // Data queries (keep existing logic)
   if (lq.includes("duplicate")) {
     const checksumMap: Record<string, string[]> = {};
     mockFileProperties.forEach(fp => {
@@ -123,10 +193,20 @@ function getAgentResponse(q: string): ChatMsg {
       },
     };
   }
-  return {
-    role: "agent",
-    content: `I analyzed your OneDrive ecosystem: **${mockDrives.length} drives**, **${mockItems.filter(i => i.item_type === "file").length} files**, **${mockFileVersions.length} file versions**, **${mockPermissions.length} permissions**. Try asking about drives, duplicates, versions, permissions, or sync status.`,
-  };
+  if (lq.includes("department")) {
+    const deptStats = DEPARTMENTS.map(dept => {
+      const users = mockUsers.filter(u => u.department === dept);
+      const files = mockItems.filter(i => users.some(u => u.user_id === i.created_by) && i.item_type === "file");
+      return [dept, String(users.length), String(files.length), formatSize(files.reduce((a, f) => a + f.size, 0))];
+    });
+    return {
+      role: "agent",
+      content: "**Department breakdown:**",
+      table: { headers: ["Department", "Users", "Files", "Storage"], rows: deptStats },
+    };
+  }
+
+  return null; // Not a local query — send to AI
 }
 
 // ── Helpers ──
@@ -261,10 +341,11 @@ const ALERTS = [
 const SUGGESTED_PROMPTS = [
   "Show drives overview",
   "Find duplicate files",
-  "Files with most versions",
-  "Shared files analysis",
-  "Sync status",
-  "Permission breakdown",
+  "Where are duplicates?",
+  "Show me Priya's profile",
+  "Department breakdown",
+  "How to export data?",
+  "Help",
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -274,8 +355,9 @@ const Index = () => {
   const navigate = useNavigate();
   const { liveSync, liveFileCount, liveTotalSize, liveItemsSynced } = useLiveData(3000);
   const [darkMode, setDarkMode] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AIProvider>("vllm");
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
-    { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. Ask me about drives, file versions, permissions, sync status, or duplicates across your OneDrive ecosystem." },
+    { role: "agent", content: "Hello! I'm your **OneDrive Intelligence Agent**. I can answer data queries, navigate you to any page, and automate UI actions.\n\nTry: *'Where are duplicates?'*, *'Show me Priya's profile'*, or ask about drives, versions, permissions, sync, departments." },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -287,6 +369,7 @@ const Index = () => {
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [toastsShown, setToastsShown] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
 
   const termTooltipStyle = darkMode
     ? { background: "hsl(0,0%,4%)", border: "1px solid hsl(120,30%,15%)", borderRadius: 8, fontSize: 11, color: "hsl(120,100%,50%)" }
@@ -294,6 +377,17 @@ const Index = () => {
 
   useEffect(() => { setLastRefresh(new Date()); }, [liveFileCount]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  // Execute action from agent response
+  const executeAction = useCallback((action: { type: string; path?: string; tab?: string }) => {
+    if (action.type === "navigate" && action.path) {
+      setTimeout(() => navigate(action.path!), 800);
+      toast.info(`Navigating to ${action.path}...`);
+    } else if (action.type === "tab" && action.tab) {
+      setActiveTab(action.tab as any);
+      toast.info(`Switched to ${action.tab} tab`);
+    }
+  }, [navigate]);
 
   // Toast notifications for sync failures and duplicates
   useEffect(() => {
@@ -309,7 +403,6 @@ const Index = () => {
         });
       });
     }
-    // Duplicate detection toast
     const checksums: Record<string, string[]> = {};
     mockFileProperties.forEach(fp => {
       if (!checksums[fp.checksum]) checksums[fp.checksum] = [];
@@ -324,12 +417,57 @@ const Index = () => {
     }
   }, [toastsShown, liveSync]);
 
-  const sendMessage = () => {
-    if (!chatInput.trim()) return;
-    const userMsg: ChatMsg = { role: "user", content: chatInput };
+  const sendMessage = async () => {
+    if (!chatInput.trim() || isAiThinking) return;
+    const userInput = chatInput;
+    const userMsg: ChatMsg = { role: "user", content: userInput };
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput("");
-    setTimeout(() => { setChatMessages(prev => [...prev, getAgentResponse(chatInput)]); }, 600);
+
+    // Try local response first (instant)
+    const localResponse = getLocalAgentResponse(userInput);
+    if (localResponse) {
+      setTimeout(() => {
+        setChatMessages(prev => [...prev, localResponse]);
+        if (localResponse.action) executeAction(localResponse.action);
+      }, 400);
+      return;
+    }
+
+    // Fall back to AI provider
+    setIsAiThinking(true);
+    setChatMessages(prev => [...prev, { role: "agent", content: "Thinking...", loading: true }]);
+
+    try {
+      const history: AIMessage[] = chatMessages
+        .filter(m => !m.loading)
+        .map(m => ({ role: m.role === "agent" ? "assistant" as const : "user" as const, content: m.content }));
+      history.push({ role: "user", content: userInput });
+
+      const result = await callAI(history, aiProvider, () => {
+        toast.info(`Switched to fallback AI provider`);
+      });
+
+      const { cleanContent, action } = parseActionFromResponse(result.content);
+
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => !m.loading);
+        return [...filtered, { role: "agent", content: cleanContent, provider: result.provider, action }];
+      });
+
+      if (action) executeAction(action);
+    } catch (err) {
+      console.error("AI call failed:", err);
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => !m.loading);
+        return [...filtered, {
+          role: "agent",
+          content: `I couldn't reach the AI service. Here's what I know locally:\n\n**${mockDrives.length} drives**, **${mockItems.filter(i => i.item_type === "file").length} files**, **${mockFileVersions.length} versions**, **${mockPermissions.length} permissions**.\n\nTry asking about drives, duplicates, versions, permissions, sync, departments, or navigation.`
+        }];
+      });
+    } finally {
+      setIsAiThinking(false);
+    }
   };
 
   const totalSize = mockItems.filter(i => i.item_type === "file").reduce((a, i) => a + i.size, 0);
@@ -439,12 +577,24 @@ const Index = () => {
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="font-bold text-sm">{darkMode ? <span className="terminal-cursor">OneDrive Scanner</span> : "OneDrive Intelligence Agent"}</h2>
-              <p className="text-[10px] text-muted-foreground">{darkMode ? "$ scanning drives..." : "Drives · Versions · Permissions · Sync"}</p>
+              <p className="text-[10px] text-muted-foreground">{darkMode ? "$ scanning drives..." : "Data · Navigation · Actions"}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          {/* AI Provider Toggle */}
+          <div className="flex items-center gap-2 mt-2 mb-3">
+            <span className="text-[9px] text-muted-foreground uppercase tracking-wider">AI:</span>
+            <button onClick={() => setAiProvider("vllm")}
+              className={`text-[9px] px-2 py-0.5 rounded-full transition-colors ${aiProvider === "vllm" ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              vLLM
+            </button>
+            <button onClick={() => setAiProvider("bedrock")}
+              className={`text-[9px] px-2 py-0.5 rounded-full transition-colors ${aiProvider === "bedrock" ? "bg-[hsl(var(--primary))] text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              Bedrock
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             {SUGGESTED_PROMPTS.map(p => (
               <button key={p} onClick={() => setChatInput(p)}
                 className="text-[10px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground hover:bg-[hsl(var(--primary))]/10 hover:text-[hsl(var(--primary))] transition-colors">
@@ -463,15 +613,32 @@ const Index = () => {
                   <div className="flex gap-2 max-w-[90%]">
                     {msg.role === "agent" && (
                       <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 flex items-center justify-center mt-1 shrink-0">
-                        <Bot className="w-3.5 h-3.5 text-[hsl(var(--primary))]" />
+                        <Bot className={`w-3.5 h-3.5 text-[hsl(var(--primary))] ${msg.loading ? "animate-spin" : ""}`} />
                       </div>
                     )}
                     <div>
                       <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-agent"}>
                         <p className="text-xs leading-relaxed whitespace-pre-line">
-                          {msg.content.split("**").map((part, idx) => idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part)}
+                          {msg.content.split(/(\*\*.*?\*\*|\*.*?\*)/g).map((part, idx) => {
+                            if (part.startsWith("**") && part.endsWith("**")) return <strong key={idx}>{part.slice(2, -2)}</strong>;
+                            if (part.startsWith("*") && part.endsWith("*")) return <em key={idx}>{part.slice(1, -1)}</em>;
+                            return part;
+                          })}
                         </p>
                       </div>
+                      {/* Action badge */}
+                      {msg.action && (
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                            <ArrowUpRight className="w-2.5 h-2.5" />
+                            {msg.action.type === "navigate" ? `→ ${msg.action.path}` : `Tab: ${msg.action.tab}`}
+                          </span>
+                        </div>
+                      )}
+                      {/* Provider badge */}
+                      {msg.provider && (
+                        <span className="text-[8px] text-muted-foreground mt-0.5 inline-block">via {msg.provider}</span>
+                      )}
                       {msg.table && (
                         <div className="mt-2 glass-card overflow-hidden">
                           <table className="w-full text-[10px]">
@@ -505,11 +672,12 @@ const Index = () => {
         <div className="p-3 border-t border-border">
           <div className="flex gap-2">
             <Input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()}
-              placeholder="Ask about your OneDrive files..."
+              placeholder={isAiThinking ? "AI is thinking..." : "Ask about files, navigate, or get help..."}
+              disabled={isAiThinking}
               className="text-xs bg-secondary border-0 focus-visible:ring-1 focus-visible:ring-[hsl(var(--primary))]" />
-            <button onClick={sendMessage}
-              className="w-9 h-9 rounded-lg bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center hover:opacity-90 transition shrink-0">
-              <Send className="w-4 h-4 text-white" />
+            <button onClick={sendMessage} disabled={isAiThinking}
+              className="w-9 h-9 rounded-lg bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center hover:opacity-90 transition shrink-0 disabled:opacity-50">
+              <Send className={`w-4 h-4 text-white ${isAiThinking ? "animate-pulse" : ""}`} />
             </button>
           </div>
         </div>

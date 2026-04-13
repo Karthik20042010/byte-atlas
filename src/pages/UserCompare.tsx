@@ -8,13 +8,14 @@ import {
 } from "recharts";
 import {
   Users, User, FileText, Copy, Database, GitBranch, Share2,
-  ChevronDown, ArrowLeftRight, Crown, AlertTriangle
+  ChevronDown, ArrowLeftRight, Crown, AlertTriangle, Download, FileDown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/PageHeader";
+import { toast } from "sonner";
 import {
   mockUsers, mockItems, mockFileProperties, mockFileVersions,
-  mockPermissions, mockDrives, formatSize, tooltipStyle, DRIVE_COLORS
+  mockPermissions, mockDrives, formatSize, tooltipStyle, DRIVE_COLORS, exportToCSV
 } from "@/lib/mockData";
 
 // Build user stats
@@ -187,6 +188,94 @@ const UserCompare = () => {
   const statsA = userAId ? getUserStats(userAId) : null;
   const statsB = userBId ? getUserStats(userBId) : null;
 
+  // Export functions
+  const handleExportCSV = () => {
+    if (!statsA || !statsB) return;
+    const headers = ["Metric", statsA.user.name, statsB.user.name, "Winner"];
+    const rows = [
+      ["Total Files", String(statsA.fileCount), String(statsB.fileCount), statsA.fileCount > statsB.fileCount ? statsA.user.name : statsB.user.name],
+      ["Storage Used", formatSize(statsA.totalStorage), formatSize(statsB.totalStorage), statsA.totalStorage > statsB.totalStorage ? statsA.user.name : statsB.user.name],
+      ["Duplicates", String(statsA.dupeCount), String(statsB.dupeCount), statsA.dupeCount > statsB.dupeCount ? statsA.user.name : statsB.user.name],
+      ["Wasted Storage", formatSize(statsA.dupeSize), formatSize(statsB.dupeSize), statsA.dupeSize > statsB.dupeSize ? statsA.user.name : statsB.user.name],
+      ["Versions", String(statsA.versionCount), String(statsB.versionCount), statsA.versionCount > statsB.versionCount ? statsA.user.name : statsB.user.name],
+      ["Shared Files", String(statsA.sharedCount), String(statsB.sharedCount), statsA.sharedCount > statsB.sharedCount ? statsA.user.name : statsB.user.name],
+      ["Folders", String(statsA.folderCount), String(statsB.folderCount), statsA.folderCount > statsB.folderCount ? statsA.user.name : statsB.user.name],
+      ["Department", statsA.user.department, statsB.user.department, "—"],
+    ];
+    exportToCSV(headers, rows, `comparison_${statsA.user.name.replace(/\s/g, "_")}_vs_${statsB.user.name.replace(/\s/g, "_")}.csv`);
+    toast.success("CSV exported successfully");
+  };
+
+  const handleExportPDF = async () => {
+    if (!statsA || !statsB) return;
+    const { default: jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.setTextColor(33, 37, 41);
+    doc.text("User Comparison Report", 14, 22);
+
+    doc.setFontSize(10);
+    doc.setTextColor(108, 117, 125);
+    doc.text(`${statsA.user.name} (${statsA.user.department}) vs ${statsB.user.name} (${statsB.user.department})`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 36);
+
+    // Summary table
+    autoTable(doc, {
+      startY: 44,
+      head: [["Metric", statsA.user.name, statsB.user.name, "Winner"]],
+      body: [
+        ["Total Files", String(statsA.fileCount), String(statsB.fileCount), statsA.fileCount > statsB.fileCount ? statsA.user.name : statsB.user.name],
+        ["Storage Used", formatSize(statsA.totalStorage), formatSize(statsB.totalStorage), statsA.totalStorage > statsB.totalStorage ? statsA.user.name : statsB.user.name],
+        ["Duplicates", String(statsA.dupeCount), String(statsB.dupeCount), statsA.dupeCount > statsB.dupeCount ? statsA.user.name : statsB.user.name],
+        ["Wasted Storage", formatSize(statsA.dupeSize), formatSize(statsB.dupeSize), statsA.dupeSize > statsB.dupeSize ? statsA.user.name : statsB.user.name],
+        ["Versions", String(statsA.versionCount), String(statsB.versionCount), statsA.versionCount > statsB.versionCount ? statsA.user.name : statsB.user.name],
+        ["Shared Files", String(statsA.sharedCount), String(statsB.sharedCount), statsA.sharedCount > statsB.sharedCount ? statsA.user.name : statsB.user.name],
+      ],
+      theme: "grid",
+      headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [248, 249, 250] },
+    });
+
+    // Drive distribution tables
+    const y = (doc as any).lastAutoTable?.finalY || 120;
+    doc.setFontSize(12);
+    doc.text(`${statsA.user.name} — Drive Distribution`, 14, y + 10);
+    autoTable(doc, {
+      startY: y + 14,
+      head: [["Drive", "File Count"]],
+      body: statsA.driveData.map(d => [d.name, String(d.count)]),
+      theme: "striped",
+      headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+    });
+
+    const y2 = (doc as any).lastAutoTable?.finalY || y + 50;
+    doc.text(`${statsB.user.name} — Drive Distribution`, 14, y2 + 10);
+    autoTable(doc, {
+      startY: y2 + 14,
+      head: [["Drive", "File Count"]],
+      body: statsB.driveData.map(d => [d.name, String(d.count)]),
+      theme: "striped",
+      headStyles: { fillColor: [139, 92, 246], fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+    });
+
+    // Insights
+    const y3 = (doc as any).lastAutoTable?.finalY || y2 + 50;
+    doc.setFontSize(12);
+    doc.text("Key Insights", 14, y3 + 10);
+    doc.setFontSize(9);
+    doc.text(`Storage Leader: ${statsA.totalStorage > statsB.totalStorage ? statsA.user.name : statsB.user.name} (+${formatSize(Math.abs(statsA.totalStorage - statsB.totalStorage))})`, 14, y3 + 18);
+    doc.text(`Most Duplicates: ${statsA.dupeCount > statsB.dupeCount ? statsA.user.name : statsB.user.name} (+${Math.abs(statsA.dupeCount - statsB.dupeCount)} files)`, 14, y3 + 24);
+    doc.text(`Most Collaborative: ${statsA.sharedCount > statsB.sharedCount ? statsA.user.name : statsB.user.name} (+${Math.abs(statsA.sharedCount - statsB.sharedCount)} shared)`, 14, y3 + 30);
+
+    doc.save(`comparison_${statsA.user.name.replace(/\s/g, "_")}_vs_${statsB.user.name.replace(/\s/g, "_")}.pdf`);
+    toast.success("PDF report exported successfully");
+  };
+
   // Radar chart data
   const radarData = statsA && statsB ? [
     { metric: "Files", A: statsA.fileCount, B: statsB.fileCount },
@@ -207,11 +296,25 @@ const UserCompare = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[1400px] mx-auto p-6 space-y-6">
-        <PageHeader
-          title="Compare Users"
-          subtitle="Side-by-side analysis of storage, duplicates, and activity"
-          breadcrumbs={[{ label: "Users", href: "/users" }, { label: "Compare" }]}
-        />
+        <div className="flex items-start justify-between">
+          <PageHeader
+            title="Compare Users"
+            subtitle="Side-by-side analysis of storage, duplicates, and activity"
+            breadcrumbs={[{ label: "Users", href: "/users" }, { label: "Compare" }]}
+          />
+          {statsA && statsB && (
+            <div className="flex gap-2 mt-2">
+              <button onClick={handleExportCSV}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-xs font-medium hover:bg-secondary/80 transition">
+                <Download className="w-3.5 h-3.5" /> CSV
+              </button>
+              <button onClick={handleExportPDF}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:opacity-90 transition">
+                <FileDown className="w-3.5 h-3.5" /> PDF Report
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* User Selectors */}
         <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
