@@ -543,9 +543,9 @@ const Index = () => {
   // userActivity replaced by userDuplicateStats above
 
   const alertColors: Record<string, string> = {
-    warning: "border-l-[hsl(var(--warning))] bg-amber-50",
-    danger: "border-l-destructive bg-red-50",
-    info: "border-l-[hsl(var(--primary))] bg-blue-50",
+    warning: "border-l-[hsl(var(--warning))] bg-[hsl(var(--warning)/0.08)]",
+    danger: "border-l-destructive bg-destructive/5",
+    info: "border-l-primary bg-primary/5",
   };
 
   // File explorer tree
