@@ -8,13 +8,14 @@ import {
 } from "recharts";
 import {
   Users, User, FileText, Copy, Database, GitBranch, Share2,
-  ChevronDown, ArrowLeftRight, Crown, AlertTriangle
+  ChevronDown, ArrowLeftRight, Crown, AlertTriangle, Download, FileDown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import PageHeader from "@/components/PageHeader";
+import { toast } from "sonner";
 import {
   mockUsers, mockItems, mockFileProperties, mockFileVersions,
-  mockPermissions, mockDrives, formatSize, tooltipStyle, DRIVE_COLORS
+  mockPermissions, mockDrives, formatSize, tooltipStyle, DRIVE_COLORS, exportToCSV
 } from "@/lib/mockData";
 
 // Build user stats
